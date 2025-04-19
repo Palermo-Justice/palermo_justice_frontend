@@ -195,6 +195,12 @@ class ResultsFragment : Fragment() {
      * Update the UI with game results
      */
     fun updateResults(result: GameResult) {
+        // Check if view is attached and binding is valid
+        if (!isAdded || _binding == null) {
+            Log.d("ResultsFragment", "Fragment detached before updating results")
+            return
+        }
+
         Log.d("ResultsFragment", "Updating UI with result: $result")
 
         // Show main result message
@@ -205,9 +211,9 @@ class ResultsFragment : Fragment() {
             binding.textViewResultTitle.text = "NIGHT RESULTS"
             binding.textViewResultSubtitle.text = "Here's what happened during the night..."
 
-            // Make the result message more prominent without using problematic methods
+            // Make the result message more prominent using simpler styling
             binding.textViewResultMessage.textSize = 18f
-            binding.textViewResultMessage.setTypeface(binding.textViewResultMessage.typeface, Typeface.BOLD)
+            binding.textViewResultMessage.setTypeface(null, Typeface.BOLD)
         }
 
         // Show eliminated player info if available
@@ -217,13 +223,9 @@ class ResultsFragment : Fragment() {
             binding.eliminatedSection.visibility = View.VISIBLE
 
             // If this is night results and someone was eliminated, add visual emphasis
-            // Using simpler styling to avoid compatibility issues
             if (resultType == GameState.NIGHT_RESULTS) {
-                // Instead of setting background drawable which might not exist
-                binding.eliminatedSection.setBackgroundColor(0xFFFFDDDD.toInt()) // Light red background
-
-                // Set text color directly to avoid ContextCompat call
-                binding.textViewEliminatedPlayer.setTextColor(0xFFCC0000.toInt()) // Dark red text
+                binding.eliminatedSection.setBackgroundColor(0xFFFFDDDD.toInt())
+                binding.textViewEliminatedPlayer.setTextColor(0xFFCC0000.toInt())
             }
         } else {
             binding.eliminatedSection.visibility = View.GONE
@@ -237,8 +239,8 @@ class ResultsFragment : Fragment() {
             binding.gameOverSection.visibility = View.GONE
         }
 
-        // Always show the round summary for night results
-        if (resultType == GameState.NIGHT_RESULTS) {
+        // Only load round summary for night results if we have a valid binding
+        if (resultType == GameState.NIGHT_RESULTS && _binding != null) {
             loadRoundSummary(result.phaseNumber)
         }
     }
@@ -248,6 +250,12 @@ class ResultsFragment : Fragment() {
      * Fixed to properly check if THIS player performed the investigation
      */
     private fun checkPrivateResultsDirectly(result: GameResult) {
+
+        // Exit early if view is detached
+        if (!isAdded || _binding == null) {
+            return
+        }
+
         // Get player role
         val database = FirebaseDatabase.getInstance()
         val playerRef = database.getReference("games")
@@ -316,6 +324,12 @@ class ResultsFragment : Fragment() {
 
         // Fetch all phase results up to this phase to create a summary
         gameRef.child("phaseResults").get().addOnSuccessListener { snapshot ->
+            // Early check if fragment is still attached and binding is valid
+            if (!isAdded || _binding == null) {
+                Log.d("ResultsFragment", "Fragment detached before round summary loaded")
+                return@addOnSuccessListener
+            }
+
             val summaryBuilder = StringBuilder()
             summaryBuilder.append("Round ${phaseNumber/2 + 1} Summary:\n\n")
 
@@ -367,9 +381,14 @@ class ResultsFragment : Fragment() {
                 }
             }
 
-            // Display summary
-            binding.textViewRoundSummary.text = summaryBuilder.toString()
-            binding.roundSummarySection.visibility = View.VISIBLE
+            // Final check if binding is still valid before updating UI
+            if (_binding != null) {
+                // Display summary
+                binding.textViewRoundSummary.text = summaryBuilder.toString()
+                binding.roundSummarySection.visibility = View.VISIBLE
+            }
+        }.addOnFailureListener { exception ->
+            Log.e("ResultsFragment", "Failed to load round summary: ${exception.message}")
         }
     }
 
@@ -468,8 +487,5 @@ class ResultsFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-
-        // Remove Firebase listeners
-        gameListener?.let { FirebaseManager.removeGameListener(gameId, it) }
     }
 }
