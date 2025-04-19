@@ -14,7 +14,8 @@ data class GameResult(
     val investigationResult: Boolean? = null, // true if mafia, false if not
     val investigatedPlayerId: String? = null,
     val protectedPlayerId: String? = null,
-    val winningTeam: Team? = null
+    val winningTeam: Team? = null,
+    val nightSummary: String = "" // Added to store summary text
 ) {
     /**
      * Convert to Map for Firebase storage
@@ -29,7 +30,8 @@ data class GameResult(
             "investigationResult" to investigationResult,
             "investigatedPlayerId" to investigatedPlayerId,
             "protectedPlayerId" to protectedPlayerId,
-            "winningTeam" to winningTeam?.name
+            "winningTeam" to winningTeam?.name,
+            "nightSummary" to nightSummary
         )
     }
 
@@ -39,7 +41,10 @@ data class GameResult(
     fun getPublicDescription(): String {
         return when (state) {
             GameState.NIGHT_RESULTS -> {
-                if (eliminatedPlayerId != null) {
+                if (nightSummary.isNotEmpty()) {
+                    // Use the detailed night summary if available
+                    nightSummary
+                } else if (eliminatedPlayerId != null) {
                     "$eliminatedPlayerName was eliminated during the night. They were a $eliminatedPlayerRole."
                 } else {
                     "No one was eliminated during the night."
@@ -68,7 +73,7 @@ data class GameResult(
      */
     fun getPrivateDescription(playerRole: String, playerId: String): String {
         // Ispettore gets investigation results
-        if (playerRole == Role.ISPETTORE.name && investigationResult != null && playerId == investigatedPlayerId) {
+        if (playerRole == Role.ISPETTORE.name && investigationResult != null && investigatedPlayerId == playerId) {
             val result = if (investigationResult) "is part of the Mafia" else "is not part of the Mafia"
             return "Your investigation reveals that this player $result."
         }
@@ -97,6 +102,7 @@ data class GameResult(
                 val investigationResult = data["investigationResult"] as? Boolean
                 val investigatedPlayerId = data["investigatedPlayerId"] as? String
                 val protectedPlayerId = data["protectedPlayerId"] as? String
+                val nightSummary = data["nightSummary"] as? String ?: ""
 
                 val winningTeamStr = data["winningTeam"] as? String
                 val winningTeam = winningTeamStr?.let {
@@ -116,7 +122,8 @@ data class GameResult(
                     investigationResult = investigationResult,
                     investigatedPlayerId = investigatedPlayerId,
                     protectedPlayerId = protectedPlayerId,
-                    winningTeam = winningTeam
+                    winningTeam = winningTeam,
+                    nightSummary = nightSummary
                 )
             } catch (e: Exception) {
                 return null

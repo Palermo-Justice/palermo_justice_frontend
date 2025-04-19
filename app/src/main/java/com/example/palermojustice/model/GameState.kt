@@ -8,12 +8,11 @@ enum class GameState(val displayName: String) {
     LOBBY("Lobby"),
     ROLE_ASSIGNMENT("Role Assignment"),
     NIGHT("Night"),
+    NIGHT_RESULTS("Night Results"),
     DAY_DISCUSSION("Day Discussion"),
     DAY_VOTING("Day Voting"),
     EXECUTION_RESULT("Execution Result"),
-    NIGHT_RESULTS("Night Results"),
     GAME_OVER("Game Over");
-
 
     /**
      * Returns the next game state based on the current state
@@ -63,5 +62,12 @@ enum class GameState(val displayName: String) {
      */
     fun isWaitingState(): Boolean {
         return this == NIGHT_RESULTS || this == DAY_DISCUSSION || this == EXECUTION_RESULT
+    }
+
+    /**
+     * Returns true if this is a results state where info should be displayed
+     */
+    fun isResultsState(): Boolean {
+        return this == NIGHT_RESULTS || this == EXECUTION_RESULT || this == GAME_OVER
     }
 }
