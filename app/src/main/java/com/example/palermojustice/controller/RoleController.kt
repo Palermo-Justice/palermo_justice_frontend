@@ -43,14 +43,19 @@ class RoleController(private val gameId: String) {
                     val phaseType = if (action.actionType == ActionType.VOTE) "day" else "night"
                     val actionPath = "$phaseType/${action.phaseNumber}/${action.sourcePlayerId}"
 
+                    Log.d("RoleController", "Storing action: $action at path: $actionPath")
+
                     actionsRef.child(actionPath).setValue(action.toMap())
                         .addOnSuccessListener {
+                            Log.d("RoleController", "Action stored successfully")
                             onSuccess()
                         }
                         .addOnFailureListener { exception ->
+                            Log.e("RoleController", "Failed to store action: ${exception.message}")
                             onFailure(exception)
                         }
                 } else {
+                    Log.e("RoleController", "Action validation failed: $message")
                     onFailure(Exception(message))
                 }
             }
@@ -93,8 +98,11 @@ class RoleController(private val gameId: String) {
                     val role = playerSnapshot.child("role").getValue(String::class.java)
                     val isAlive = playerSnapshot.child("isAlive").getValue(Boolean::class.java) ?: true
 
+                    Log.d("RoleController", "Validating action for player ${action.sourcePlayerId}, role=$role, alive=$isAlive")
+
                     // Check if player is alive
                     if (!isAlive) {
+                        Log.d("RoleController", "Player ${action.sourcePlayerId} is dead and cannot perform actions")
                         callback(false, "Dead players cannot perform actions")
                         return@addOnSuccessListener
                     }
@@ -106,6 +114,7 @@ class RoleController(private val gameId: String) {
                         if (action.sourcePlayerId == action.targetPlayerId &&
                             action.actionType != ActionType.PROTECT &&
                             action.actionType != ActionType.BLESS) {
+                            Log.d("RoleController", "Player cannot target self with this action")
                             callback(false, "You cannot target yourself with this action")
                             return@addOnSuccessListener
                         }
@@ -116,24 +125,37 @@ class RoleController(private val gameId: String) {
                                 if (targetSnapshot.exists()) {
                                     val targetIsAlive = targetSnapshot.child("isAlive").getValue(Boolean::class.java) ?: true
 
+                                    Log.d("RoleController", "Target player ${action.targetPlayerId} alive=$targetIsAlive")
+
                                     if (!targetIsAlive) {
                                         callback(false, "You cannot target a dead player")
                                         return@addOnSuccessListener
                                     }
 
                                     // All checks passed, action is valid
+                                    Log.d("RoleController", "Action is valid")
                                     callback(true, "Action is valid")
                                 } else {
+                                    Log.d("RoleController", "Target player does not exist")
                                     callback(false, "Target player does not exist")
                                 }
                             }
                             .addOnFailureListener { exception ->
+                                Log.e("RoleController", "Failed to validate target: ${exception.message}")
                                 callback(false, "Failed to validate target: ${exception.message}")
                             }
                     } else {
+                        Log.d("RoleController", "Action type ${action.actionType} not valid for role $role")
                         callback(false, "This action is not valid for your role")
                     }
+                } else {
+                    Log.d("RoleController", "Player ${action.sourcePlayerId} does not exist")
+                    callback(false, "Player does not exist")
                 }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("RoleController", "Failed to get player data: ${exception.message}")
+                callback(false, "Failed to get player data: ${exception.message}")
             }
     }
 }

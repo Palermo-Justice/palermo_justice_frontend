@@ -77,11 +77,56 @@ class NightPhaseFragment : Fragment() {
         // Add debug log to check fragment parameters
         Log.d("NightPhaseFragment", "Fragment created with canAct=$canAct, playerRole=$playerRole")
 
-        // Setup UI
-        setupUI()
+        // Check player status directly from Firebase to ensure accuracy
+        checkPlayerStatus()
+    }
 
-        // Check if player has already performed an action
-        checkExistingActions()
+    private fun checkPlayerStatus() {
+        if (gameId.isEmpty() || playerId.isEmpty()) {
+            Log.e("NightPhaseFragment", "Invalid gameId or playerId")
+            return
+        }
+
+        val database = FirebaseDatabase.getInstance()
+        val playerRef = database.getReference("games")
+            .child(gameId)
+            .child("players")
+            .child(playerId)
+
+        playerRef.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val role = snapshot.child("role").getValue(String::class.java)
+                val isAlive = snapshot.child("isAlive").getValue(Boolean::class.java) ?: true
+
+                Log.d("NightPhaseFragment", "Player status from Firebase: role=$role, alive=$isAlive")
+
+                // Update local variables with accurate data from Firebase
+                playerRole = role
+
+                // Can act only if player is alive AND has a role with night actions
+                canAct = isAlive && role?.let {
+                    try {
+                        Role.valueOf(it).canActAtNight()
+                    } catch (e: IllegalArgumentException) {
+                        false
+                    }
+                } ?: false
+
+                Log.d("NightPhaseFragment", "Updated canAct=$canAct after checking Firebase")
+
+                // Setup UI with the most current data
+                setupUI()
+
+                // Now check if the player has already performed an action
+                checkExistingActions()
+            } else {
+                Log.e("NightPhaseFragment", "Player snapshot does not exist")
+                Toast.makeText(context, "Error: Player data not found", Toast.LENGTH_SHORT).show()
+            }
+        }.addOnFailureListener { exception ->
+            Log.e("NightPhaseFragment", "Failed to get player data: ${exception.message}")
+            Toast.makeText(context, "Error loading player data", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun setupUI() {
@@ -100,11 +145,6 @@ class NightPhaseFragment : Fragment() {
             null
         }
 
-        // Debug check for Ispettore
-        if (playerRole == Role.ISPETTORE.name) {
-            Log.d("NightPhaseFragment", "Player is Ispettore, canAct=$canAct")
-        }
-
         if (roleEnum != null && canAct) {
             // Player has a special night action
             binding.textViewRoleInstructions.text = roleEnum.getNightActionDescription()
@@ -117,35 +157,39 @@ class NightPhaseFragment : Fragment() {
             }
         } else {
             // Player does not have a night action
-            if (!canAct && playerRole != null) {
-                if (playerRole == Role.PAESANO.name) {
-                    binding.textViewRoleInstructions.text =
-                        "As a Paesano, you sleep during the night. Wait for the day to begin."
-                } else if (roleEnum?.canActAtNight() == true) {
-                    binding.textViewRoleInstructions.text =
-                        "You cannot perform actions. There might be an issue with your game state. Please wait for the next phase."
-                    // Add special case for Ispettore to still enable the action button if they're supposed to be active
-                    if (playerRole == Role.ISPETTORE.name) {
-                        // Force enable the action for Ispettore in first night
-                        binding.actionSection.visibility = View.VISIBLE
-                        binding.textViewRoleInstructions.text = Role.ISPETTORE.getNightActionDescription()
-                        binding.buttonPerformAction.text = "Perform ${Role.ISPETTORE.displayName} Action"
-                        binding.buttonPerformAction.setOnClickListener {
-                            performRoleAction(Role.ISPETTORE)
-                        }
-                    }
-                } else {
-                    binding.textViewRoleInstructions.text =
-                        "You cannot perform any actions at night. Wait for the day to begin."
-                }
-            } else if (!canAct) {
+            if (playerRole == null) {
                 binding.textViewRoleInstructions.text =
-                    "You are dead and cannot perform any actions. Wait for the next phase."
+                    "Role not assigned yet. Please wait."
+            } else if (!canAct) {
+                // Check if player is dead
+                val database = FirebaseDatabase.getInstance()
+                val playerRef = database.getReference("games")
+                    .child(gameId)
+                    .child("players")
+                    .child(playerId)
+                    .child("isAlive")
+
+                playerRef.get().addOnSuccessListener { snapshot ->
+                    val isAlive = snapshot.getValue(Boolean::class.java) ?: true
+
+                    if (!isAlive) {
+                        binding.textViewRoleInstructions.text =
+                            "You are dead and cannot perform any actions."
+                    } else if (playerRole == Role.PAESANO.name) {
+                        binding.textViewRoleInstructions.text =
+                            "As a Paesano, you sleep during the night. Wait for the day to begin."
+                    } else if (roleEnum?.canActAtNight() == true) {
+                        binding.textViewRoleInstructions.text =
+                            "You have a night role but cannot perform actions. Please check game state."
+                    } else {
+                        binding.textViewRoleInstructions.text =
+                            "You cannot perform any actions at night. Wait for the day to begin."
+                    }
+                }
             }
 
-            if (roleEnum?.canActAtNight() != true || (playerRole != Role.ISPETTORE.name)) {
-                binding.actionSection.visibility = View.GONE
-            }
+            // Hide action section if player can't act
+            binding.actionSection.visibility = View.GONE
         }
     }
 
@@ -153,7 +197,10 @@ class NightPhaseFragment : Fragment() {
      * Check if player has already performed an action
      */
     private fun checkExistingActions() {
-        if (!canAct || playerRole == null) return
+        if (!canAct || playerRole == null) {
+            Log.d("NightPhaseFragment", "Skipping action check: canAct=$canAct, playerRole=$playerRole")
+            return
+        }
 
         // Get the action type based on role
         val actionType = try {
@@ -166,15 +213,23 @@ class NightPhaseFragment : Fragment() {
             }
         } catch (e: IllegalArgumentException) {
             null
-        } ?: return
+        }
+
+        if (actionType == null) {
+            Log.d("NightPhaseFragment", "No action type for role $playerRole")
+            return
+        }
 
         // Check if player has already performed this action
         val database = FirebaseDatabase.getInstance()
+        val currentPhaseNumber = getCurrentPhaseNumber()
+        Log.d("NightPhaseFragment", "Checking existing actions for phase $currentPhaseNumber")
+
         val actionsRef = database.getReference("games")
             .child(gameId)
             .child("actions")
             .child("night")
-            .child(getCurrentPhaseNumber().toString())
+            .child(currentPhaseNumber.toString())
             .child(playerId)
 
         actionsRef.get().addOnSuccessListener { snapshot ->
@@ -202,13 +257,21 @@ class NightPhaseFragment : Fragment() {
     }
 
     private fun performRoleAction(role: Role) {
+        // Get current phase number for accurate action submission
+        val currentPhase = getCurrentPhaseNumber()
+        Log.d("NightPhaseFragment", "Performing role action for phase $currentPhase")
+
         // Determine action type
         val actionType = when (role) {
             Role.MAFIOSO -> ActionType.KILL
             Role.ISPETTORE -> ActionType.INVESTIGATE
             Role.SGARRISTA -> ActionType.PROTECT
             Role.IL_PRETE -> ActionType.BLESS
-            else -> return
+            else -> {
+                Log.e("NightPhaseFragment", "Invalid role for night action: $role")
+                Toast.makeText(context, "Cannot perform action with this role", Toast.LENGTH_SHORT).show()
+                return
+            }
         }
 
         // Start RoleActionActivity
@@ -227,29 +290,20 @@ class NightPhaseFragment : Fragment() {
     private fun getCurrentPhaseNumber(): Int {
         var phaseNumber = 1 // Default to 1
 
-        try {
-            // Use synchronous approach for simplicity
-            val database = FirebaseDatabase.getInstance()
-            val gameRef = database.getReference("games").child(gameId)
+        // Read directly from Firebase to get the latest phase number
+        val database = FirebaseDatabase.getInstance()
+        val gameRef = database.getReference("games").child(gameId)
 
-            // Check for existing actions in a different way
-            val actionsRef = gameRef.child("actions")
-                .child("night")
-                .child(playerId)
-
-            // Check for current phase in game data
-            gameRef.child("currentPhase").get()
-                .addOnSuccessListener { dataSnapshot ->
-                    if (dataSnapshot.exists()) {
-                        val value = dataSnapshot.getValue(Long::class.java)
-                        if (value != null) {
-                            phaseNumber = value.toInt()
-                        }
-                    }
+        gameRef.child("currentPhase").get().addOnSuccessListener { dataSnapshot ->
+            if (dataSnapshot.exists()) {
+                val value = dataSnapshot.getValue(Long::class.java)
+                if (value != null) {
+                    phaseNumber = value.toInt()
+                    Log.d("NightPhaseFragment", "Current phase number from Firebase: $phaseNumber")
                 }
-        } catch (e: Exception) {
-            // Log error and return default phase number
-            e.printStackTrace()
+            }
+        }.addOnFailureListener { exception ->
+            Log.e("NightPhaseFragment", "Error getting phase number: ${exception.message}")
         }
 
         return phaseNumber
@@ -260,10 +314,8 @@ class NightPhaseFragment : Fragment() {
      */
     override fun onResume() {
         super.onResume()
-        // Always check if action was performed when returning from RoleActionActivity
-        if (canAct && playerRole != null) {
-            checkExistingActions()
-        }
+        // Always recheck player status and existing actions when returning to the fragment
+        checkPlayerStatus()
     }
 
     override fun onDestroyView() {
