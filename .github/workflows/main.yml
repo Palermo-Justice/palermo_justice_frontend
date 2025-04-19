@@ -25,7 +25,7 @@ jobs:
         run: chmod +x ./gradlew 
 
       - name: Build with Gradle (ignore lint errors)
-        run: ./gradlew build -Pandroid.injected.lint.abortOnError=false
+        run: ./gradlew build
     
       - name: Upload APK
         uses: actions/upload-artifact@v4
