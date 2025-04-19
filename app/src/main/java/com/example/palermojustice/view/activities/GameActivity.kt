@@ -17,7 +17,7 @@ import com.example.palermojustice.model.GameResult
 import com.example.palermojustice.model.GameState
 import com.example.palermojustice.model.Player
 import com.example.palermojustice.model.Role
-import com.example.palermojustice.model.Team
+import com.example.palermojustice.model.ActionType
 import com.example.palermojustice.utils.NotificationHelper
 import com.example.palermojustice.view.fragments.DayPhaseFragment
 import com.example.palermojustice.view.fragments.NightPhaseFragment
@@ -96,7 +96,7 @@ class GameActivity : AppCompatActivity() {
         gameListener = FirebaseManager.listenToGame(
             gameId = gameId,
             onUpdate = { game ->
-                // Update current player
+                // Update current player with latest data from Firebase
                 currentPlayer = game.players[playerId]
 
                 // Debug log to check player status
@@ -122,8 +122,8 @@ class GameActivity : AppCompatActivity() {
                     currentPlayer?.isAlive ?: false
                 )
 
-                // If player can act, notify them
-                if (canAct) {
+                // If player can act and is alive, notify them
+                if (canAct && currentPlayer?.isAlive == true) {
                     notificationHelper.notifyYourTurn(gameId, currentState)
                 }
             },

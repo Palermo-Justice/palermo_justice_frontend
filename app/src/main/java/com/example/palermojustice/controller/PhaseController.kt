@@ -28,15 +28,19 @@ class PhaseController(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        Log.d("PhaseController", "Beginning night phase $phaseNumber")
+
         val updates = HashMap<String, Any>()
         updates["status"] = "night"
         updates["currentPhase"] = phaseNumber
 
         gameRef.updateChildren(updates)
             .addOnSuccessListener {
+                Log.d("PhaseController", "Successfully updated game to night phase $phaseNumber")
                 onSuccess()
             }
             .addOnFailureListener { exception ->
+                Log.e("PhaseController", "Failed to begin night phase: ${exception.message}")
                 onFailure(exception)
             }
     }
@@ -49,6 +53,8 @@ class PhaseController(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        Log.d("PhaseController", "Processing night actions for phase $phaseNumber")
+
         // Get all night actions using a safer approach
         val actionsRef = gameRef.child("actions").child("night").child(phaseNumber.toString())
 
@@ -56,9 +62,12 @@ class PhaseController(private val gameId: String) {
             val actions = mutableListOf<RoleAction>()
 
             if (actionsSnapshot.exists()) {
+                Log.d("PhaseController", "Found night actions for phase $phaseNumber")
+
                 // Extract actions from snapshot
                 for (playerSnapshot in actionsSnapshot.children) {
                     val playerId = playerSnapshot.key ?: continue
+                    Log.d("PhaseController", "Processing action from player $playerId")
 
                     // Convert to map
                     val actionData = HashMap<String, Any>()
@@ -75,8 +84,15 @@ class PhaseController(private val gameId: String) {
 
                     // Create RoleAction from data
                     val action = RoleAction.fromMap(playerId, actionData)
-                    action?.let { actions.add(it) }
+                    if (action != null) {
+                        actions.add(action)
+                        Log.d("PhaseController", "Added action: ${action.actionType} from $playerId targeting ${action.targetPlayerId}")
+                    } else {
+                        Log.e("PhaseController", "Failed to create action from data: $actionData")
+                    }
                 }
+            } else {
+                Log.d("PhaseController", "No night actions found for phase $phaseNumber")
             }
 
             // Get all players
@@ -104,14 +120,16 @@ class PhaseController(private val gameId: String) {
                 }
 
                 // Process night actions in order of priority
-                val result = processNightActionsInOrder(actions, players)
+                val result = processNightActionsInOrder(actions, players, phaseNumber)
 
                 // Save results to database
                 saveNightResults(phaseNumber, result, onSuccess, onFailure)
             }.addOnFailureListener { exception ->
+                Log.e("PhaseController", "Failed to get players: ${exception.message}")
                 onFailure(exception)
             }
         }.addOnFailureListener { exception ->
+            Log.e("PhaseController", "Failed to get night actions: ${exception.message}")
             onFailure(exception)
         }
     }
@@ -124,7 +142,8 @@ class PhaseController(private val gameId: String) {
      */
     private fun processNightActionsInOrder(
         actions: List<RoleAction>,
-        players: Map<String, Player>
+        players: Map<String, Player>,
+        phaseNumber: Int
     ): GameResult {
         var eliminatedPlayerId: String? = null
         var eliminatedPlayerName: String? = null
@@ -133,25 +152,33 @@ class PhaseController(private val gameId: String) {
         var investigatedPlayerId: String? = null
         var protectedPlayerId: String? = null
 
+        Log.d("PhaseController", "Processing ${actions.size} night actions in order of priority")
+
         // Get protection targets
         val protectionActions = actions.filter {
             it.actionType == ActionType.PROTECT || it.actionType == ActionType.BLESS
         }
+
+        Log.d("PhaseController", "Found ${protectionActions.size} protection actions")
 
         // Multiple protections can happen, all protected players are safe
         val protectedPlayers = protectionActions.map { it.targetPlayerId }.toSet()
 
         if (protectedPlayers.isNotEmpty()) {
             protectedPlayerId = protectedPlayers.first() // Save one for results
+            Log.d("PhaseController", "Protected players: $protectedPlayers")
         }
 
         // Get kill targets
         val killActions = actions.filter { it.actionType == ActionType.KILL }
+        Log.d("PhaseController", "Found ${killActions.size} kill actions")
 
         // If there are multiple kill actions (multiple mafia), take the most frequent target
         val killTargets = killActions.groupBy { it.targetPlayerId }
             .maxByOrNull { (_, actions) -> actions.size }
             ?.key
+
+        Log.d("PhaseController", "Kill target: $killTargets")
 
         // Process kill if target isn't protected
         if (killTargets != null && !protectedPlayers.contains(killTargets)) {
@@ -159,13 +186,19 @@ class PhaseController(private val gameId: String) {
             eliminatedPlayerName = players[killTargets]?.name
             eliminatedPlayerRole = players[killTargets]?.role
 
+            Log.d("PhaseController", "Player $eliminatedPlayerName ($eliminatedPlayerRole) will be eliminated")
+
             // Update player status to dead
             gameRef.child("players").child(killTargets).child("isAlive")
                 .setValue(false)
+        } else if (killTargets != null && protectedPlayers.contains(killTargets)) {
+            Log.d("PhaseController", "Kill target was protected!")
         }
 
         // Process investigations
         val investigationActions = actions.filter { it.actionType == ActionType.INVESTIGATE }
+        Log.d("PhaseController", "Found ${investigationActions.size} investigation actions")
+
         if (investigationActions.isNotEmpty()) {
             val investigation = investigationActions.first() // Only one detective
             investigatedPlayerId = investigation.targetPlayerId
@@ -173,12 +206,16 @@ class PhaseController(private val gameId: String) {
             // Determine if target is mafia
             val targetRole = players[investigation.targetPlayerId]?.role
             investigationResult = targetRole == Role.MAFIOSO.name
+
+            Log.d("PhaseController", "Investigation result: Player ${investigation.targetPlayerId} is Mafia: $investigationResult")
         }
 
         // Check if game is over (all mafia dead or mafia >= citizens)
         val alivePlayers = players.values.filter { it.isAlive }
         val aliveMafia = alivePlayers.count { it.role == Role.MAFIOSO.name }
         val aliveCitizens = alivePlayers.count { it.role != Role.MAFIOSO.name }
+
+        Log.d("PhaseController", "Game status: $aliveMafia mafia alive, $aliveCitizens citizens alive")
 
         val winningTeam = when {
             aliveMafia == 0 -> Team.CITIZENS
@@ -188,12 +225,13 @@ class PhaseController(private val gameId: String) {
 
         // If game is over, update game status
         if (winningTeam != null) {
+            Log.d("PhaseController", "Game over! Winning team: $winningTeam")
             gameRef.child("status").setValue("finished")
             gameRef.child("winningTeam").setValue(winningTeam.name)
         }
 
         return GameResult(
-            phaseNumber = 0, // Will be set by caller
+            phaseNumber = phaseNumber, // Will be set properly here
             state = GameState.NIGHT_RESULTS,
             eliminatedPlayerId = eliminatedPlayerId,
             eliminatedPlayerName = eliminatedPlayerName,

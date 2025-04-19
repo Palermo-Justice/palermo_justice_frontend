@@ -8,10 +8,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import com.example.palermojustice.databinding.FragmentResultsBinding
 import com.example.palermojustice.firebase.FirebaseManager
-import com.example.palermojustice.model.GameResult
-import com.example.palermojustice.model.GameState
-import com.example.palermojustice.model.Role
-import com.example.palermojustice.model.Team
+import com.example.palermojustice.model.*
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
@@ -113,15 +110,21 @@ class ResultsFragment : Fragment() {
         // Get current phase number and results from Firebase
         val gameRef = FirebaseDatabase.getInstance().getReference("games").child(gameId)
 
+        Log.d("ResultsFragment", "Loading results for game $gameId, resultType=$resultType")
+
         gameRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val phaseNumber = snapshot.child("currentPhase").getValue(Long::class.java)?.toInt() ?: 0
+                Log.d("ResultsFragment", "Current phase from Firebase: $phaseNumber")
+
                 val resultsSnapshot = snapshot.child("phaseResults").child(phaseNumber.toString())
                 val gameStatus = snapshot.child("status").getValue(String::class.java) ?: ""
 
                 Log.d("ResultsFragment", "Loading results for phase $phaseNumber, status: $gameStatus")
 
                 if (resultsSnapshot.exists()) {
+                    Log.d("ResultsFragment", "Results snapshot exists for phase $phaseNumber")
+
                     // Extract result data
                     val stateStr = resultsSnapshot.child("state").getValue(String::class.java)
                     val eliminatedPlayerId = resultsSnapshot.child("eliminatedPlayerId").getValue(String::class.java)
@@ -130,6 +133,8 @@ class ResultsFragment : Fragment() {
                     val investigationResult = resultsSnapshot.child("investigationResult").getValue(Boolean::class.java)
                     val investigatedPlayerId = resultsSnapshot.child("investigatedPlayerId").getValue(String::class.java)
                     val winningTeamStr = resultsSnapshot.child("winningTeam").getValue(String::class.java)
+
+                    Log.d("ResultsFragment", "Parsed results: state=$stateStr, eliminated=$eliminatedPlayerName, investigatedPlayer=$investigatedPlayerId")
 
                     // Create GameResult object
                     val state = try {
@@ -161,8 +166,8 @@ class ResultsFragment : Fragment() {
                     // Update UI with result
                     updateResults(result)
 
-                    // Check for player-specific private information
-                    checkPrivateResults(resultsSnapshot)
+                    // Check for player-specific private information directly
+                    checkPrivateResultsDirectly(result)
 
                     // Load and display round summary
                     loadRoundSummary(phaseNumber)
@@ -173,11 +178,13 @@ class ResultsFragment : Fragment() {
                     }
                 } else {
                     // No results available yet
+                    Log.d("ResultsFragment", "No results found for phase $phaseNumber")
                     binding.textViewResultMessage.text = "Results are being prepared..."
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
+                Log.e("ResultsFragment", "Database error: ${error.message}")
                 binding.textViewResultMessage.text = "Error loading results"
             }
         })
@@ -187,6 +194,8 @@ class ResultsFragment : Fragment() {
      * Update the UI with game results
      */
     fun updateResults(result: GameResult) {
+        Log.d("ResultsFragment", "Updating UI with result: $result")
+
         // Show main result message
         binding.textViewResultMessage.text = result.getPublicDescription()
 
@@ -209,34 +218,65 @@ class ResultsFragment : Fragment() {
     }
 
     /**
-     * Check if there are private results specific to this player
+     * Check if this player has investigation results to see
+     * Fixed to properly check if THIS player performed the investigation
      */
-    private fun checkPrivateResults(resultsSnapshot: DataSnapshot) {
+    private fun checkPrivateResultsDirectly(result: GameResult) {
         // Get player role
-        val gameRef = FirebaseDatabase.getInstance().getReference("games")
+        val database = FirebaseDatabase.getInstance()
+        val playerRef = database.getReference("games")
             .child(gameId)
             .child("players")
             .child(playerId)
 
-        gameRef.get().addOnSuccessListener { playerSnapshot ->
+        playerRef.get().addOnSuccessListener { playerSnapshot ->
             val role = playerSnapshot.child("role").getValue(String::class.java)
 
-            // Check for detective's investigation results
+            Log.d("ResultsFragment", "Checking private results for player $playerId with role $role")
+
+            // For detective - show investigation results if they performed the investigation
             if (role == Role.ISPETTORE.name) {
-                val investigatedPlayerId = resultsSnapshot.child("investigatedPlayerId").getValue(String::class.java)
+                // Check if this player performed the investigation
+                val actionsRef = database.getReference("games")
+                    .child(gameId)
+                    .child("actions")
+                    .child("night")
+                    .child(result.phaseNumber.toString())
+                    .child(playerId)
 
-                if (investigatedPlayerId == playerId) {
-                    val investigationResult = resultsSnapshot.child("investigationResult").getValue(Boolean::class.java)
+                actionsRef.get().addOnSuccessListener { actionSnapshot ->
+                    if (actionSnapshot.exists() &&
+                        actionSnapshot.child("actionType").getValue(String::class.java) == ActionType.INVESTIGATE.name) {
 
-                    // Show private result
-                    val resultText = if (investigationResult == true) {
-                        "Your investigation reveals: This player IS part of the Mafia!"
+                        // This player performed an investigation, show results
+                        val targetId = actionSnapshot.child("targetPlayerId").getValue(String::class.java)
+
+                        if (targetId != null && result.investigationResult != null) {
+                            // Get target player's name
+                            database.getReference("games")
+                                .child(gameId)
+                                .child("players")
+                                .child(targetId)
+                                .child("name")
+                                .get()
+                                .addOnSuccessListener { nameSnapshot ->
+                                    val targetName = nameSnapshot.getValue(String::class.java) ?: "Unknown Player"
+
+                                    // Show private result
+                                    val resultText = if (result.investigationResult == true) {
+                                        "Your investigation reveals: $targetName IS part of the Mafia!"
+                                    } else {
+                                        "Your investigation reveals: $targetName is NOT part of the Mafia."
+                                    }
+
+                                    Log.d("ResultsFragment", "Found investigation result: $resultText")
+                                    binding.textViewPrivateResult.text = resultText
+                                    binding.privateResultSection.visibility = View.VISIBLE
+                                }
+                        }
                     } else {
-                        "Your investigation reveals: This player is NOT part of the Mafia."
+                        Log.d("ResultsFragment", "Player did not perform investigation this phase")
                     }
-
-                    binding.textViewPrivateResult.text = resultText
-                    binding.privateResultSection.visibility = View.VISIBLE
                 }
             }
         }

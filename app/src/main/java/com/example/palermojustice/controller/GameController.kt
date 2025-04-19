@@ -5,6 +5,7 @@ import com.example.palermojustice.firebase.FirebaseManager
 import com.example.palermojustice.model.*
 import com.example.palermojustice.utils.Constants
 import com.example.palermojustice.utils.GameRules
+import com.example.palermojustice.model.RoleAction
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -87,11 +88,15 @@ class GameController private constructor(private val gameId: String) {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
+                    Log.d("GameController", "Received game data update")
+
                     // Update current game object
                     currentGame = Game.fromSnapshot(gameId, snapshot)
 
                     // Get current state from database
                     val stateStr = snapshot.child("status").getValue(String::class.java) ?: "lobby"
+                    Log.d("GameController", "Game status from Firebase: $stateStr")
+
                     currentState = when (stateStr) {
                         "lobby" -> GameState.LOBBY
                         "night" -> GameState.NIGHT
@@ -105,6 +110,8 @@ class GameController private constructor(private val gameId: String) {
                     currentPhaseNumber = snapshot.child("currentPhase")
                         .getValue(Long::class.java)?.toInt() ?: 0
 
+                    Log.d("GameController", "Current phase number: $currentPhaseNumber")
+
                     // Notify listener of state change
                     gameStateListener?.invoke(currentState)
 
@@ -113,14 +120,17 @@ class GameController private constructor(private val gameId: String) {
                         .child(currentPhaseNumber.toString())
 
                     if (phaseResultsSnapshot.exists()) {
+                        Log.d("GameController", "Found phase results for phase $currentPhaseNumber")
                         val result = parseGameResult(phaseResultsSnapshot, currentState)
                         gameResultListener?.invoke(result)
+                    } else {
+                        Log.d("GameController", "No phase results found for phase $currentPhaseNumber")
                     }
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                // Handle error
+                Log.e("GameController", "Firebase listener cancelled: ${error.message}")
             }
         }
 
@@ -132,6 +142,8 @@ class GameController private constructor(private val gameId: String) {
      * Parse game result from Firebase data
      */
     private fun parseGameResult(snapshot: DataSnapshot, state: GameState): GameResult {
+        Log.d("GameController", "Parsing game result for state $state")
+
         val eliminatedPlayerId = snapshot.child("eliminatedPlayerId").getValue(String::class.java)
         val eliminatedPlayerName = snapshot.child("eliminatedPlayerName").getValue(String::class.java)
         val eliminatedPlayerRole = snapshot.child("eliminatedPlayerRole").getValue(String::class.java)
@@ -147,6 +159,11 @@ class GameController private constructor(private val gameId: String) {
                 null
             }
         }
+
+        // Log the results for debugging
+        Log.d("GameController", "Parsed result: eliminated=$eliminatedPlayerName, " +
+                "investigation=${investigationResult != null}, " +
+                "investigatedPlayer=$investigatedPlayerId, winningTeam=$winningTeam")
 
         return GameResult(
             phaseNumber = currentPhaseNumber,
@@ -219,10 +236,19 @@ class GameController private constructor(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        Log.d("GameController", "Player $playerId performing $actionType action on target $targetId")
+
         // Validate action
         val player = currentGame?.players?.get(playerId)
-        if (player == null || !player.isAlive) {
-            onFailure(Exception("Invalid player or player is not alive"))
+        if (player == null) {
+            Log.e("GameController", "Invalid player: $playerId")
+            onFailure(Exception("Invalid player"))
+            return
+        }
+
+        if (!player.isAlive) {
+            Log.e("GameController", "Player $playerId is not alive and cannot perform actions")
+            onFailure(Exception("Dead players cannot perform actions"))
             return
         }
 
@@ -233,7 +259,14 @@ class GameController private constructor(private val gameId: String) {
             null
         }
 
-        if (playerRole == null || !actionType.getValidRoles().contains(playerRole)) {
+        if (playerRole == null) {
+            Log.e("GameController", "Player $playerId has no valid role")
+            onFailure(Exception("Invalid player role"))
+            return
+        }
+
+        if (!actionType.getValidRoles().contains(playerRole)) {
+            Log.e("GameController", "Action $actionType is not valid for role $playerRole")
             onFailure(Exception("This action is not valid for your role"))
             return
         }
@@ -247,6 +280,7 @@ class GameController private constructor(private val gameId: String) {
         )
 
         // Submit the action to the role controller
+        Log.d("GameController", "Submitting action to role controller: $action")
         roleController?.submitAction(action, onSuccess, onFailure)
     }
 
@@ -259,20 +293,31 @@ class GameController private constructor(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        Log.d("GameController", "Player $voterId submitting vote for $targetId")
+
         // Check if it's voting phase
         if (currentState != GameState.DAY_VOTING) {
+            Log.e("GameController", "Cannot vote - not in voting phase. Current state: $currentState")
             onFailure(Exception("It's not voting time"))
             return
         }
 
         // Check if voter is alive
         val voter = currentGame?.players?.get(voterId)
-        if (voter == null || !voter.isAlive) {
+        if (voter == null) {
+            Log.e("GameController", "Invalid voter: $voterId")
+            onFailure(Exception("Invalid voter"))
+            return
+        }
+
+        if (!voter.isAlive) {
+            Log.e("GameController", "Dead player $voterId cannot vote")
             onFailure(Exception("You cannot vote"))
             return
         }
 
         // Submit vote
+        Log.d("GameController", "Submitting vote to VotingController")
         votingController?.submitVote(voterId, targetId, currentPhaseNumber, onSuccess, onFailure)
     }
 
@@ -289,6 +334,7 @@ class GameController private constructor(private val gameId: String) {
         val hostId = currentGame?.hostId
 
         if (currentUserId != hostId) {
+            Log.e("GameController", "Only host can advance phase. Current user: $currentUserId, Host: $hostId")
             onFailure(Exception("Only the host can advance the phase"))
             return
         }
@@ -304,6 +350,8 @@ class GameController private constructor(private val gameId: String) {
             GameState.NIGHT -> {
                 // Increment phase number when transitioning to night
                 currentPhaseNumber++
+                Log.d("GameController", "Advancing to night phase $currentPhaseNumber")
+
                 phaseController?.beginNightPhase(currentPhaseNumber,
                     onSuccess = {
                         Log.d("GameController", "Successfully advanced to NIGHT phase $currentPhaseNumber")
@@ -317,6 +365,8 @@ class GameController private constructor(private val gameId: String) {
                 )
             }
             GameState.NIGHT_RESULTS -> {
+                Log.d("GameController", "Processing night actions for phase $currentPhaseNumber")
+
                 phaseController?.processNightActions(currentPhaseNumber,
                     onSuccess = {
                         Log.d("GameController", "Successfully processed night actions")
@@ -330,6 +380,8 @@ class GameController private constructor(private val gameId: String) {
                 )
             }
             GameState.DAY_DISCUSSION -> {
+                Log.d("GameController", "Beginning day discussion phase")
+
                 phaseController?.beginDayPhase(currentPhaseNumber,
                     onSuccess = {
                         Log.d("GameController", "Successfully advanced to DAY_DISCUSSION")
@@ -343,6 +395,8 @@ class GameController private constructor(private val gameId: String) {
                 )
             }
             GameState.DAY_VOTING -> {
+                Log.d("GameController", "Beginning voting phase")
+
                 phaseController?.beginVotingPhase(currentPhaseNumber,
                     onSuccess = {
                         Log.d("GameController", "Successfully advanced to DAY_VOTING")
@@ -356,6 +410,8 @@ class GameController private constructor(private val gameId: String) {
                 )
             }
             GameState.EXECUTION_RESULT -> {
+                Log.d("GameController", "Processing voting results")
+
                 phaseController?.processVotingResults(currentPhaseNumber,
                     onSuccess = {
                         Log.d("GameController", "Successfully processed voting results")
@@ -370,6 +426,8 @@ class GameController private constructor(private val gameId: String) {
             }
             else -> {
                 // Simple state transition for other states
+                Log.d("GameController", "Simple transition to $nextState")
+
                 gameRef.child("status").setValue(getFirebaseStatusForState(nextState))
                     .addOnSuccessListener {
                         Log.d("GameController", "Advanced to state: $nextState")
@@ -390,6 +448,8 @@ class GameController private constructor(private val gameId: String) {
     fun checkGameOver(): Team? {
         val players = currentGame?.players?.values?.toList() ?: return null
 
+        Log.d("GameController", "Checking if game is over with ${players.size} players")
+
         // Check if Mafia has won (equal or more than citizens)
         val aliveMafia = players.count {
             it.role == Role.MAFIOSO.name && it.isAlive
@@ -397,6 +457,8 @@ class GameController private constructor(private val gameId: String) {
         val aliveCitizens = players.count {
             it.role != Role.MAFIOSO.name && it.isAlive
         }
+
+        Log.d("GameController", "Game status: $aliveMafia mafia alive, $aliveCitizens citizens alive")
 
         return when {
             aliveMafia == 0 -> Team.CITIZENS // All mafia dead, citizens win
@@ -413,16 +475,20 @@ class GameController private constructor(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        Log.d("GameController", "Ending game with winning team: $winningTeam")
+
         val updates = mutableMapOf<String, Any>()
         updates["status"] = "finished"
         updates["winningTeam"] = winningTeam.name
 
         gameRef.updateChildren(updates)
             .addOnSuccessListener {
+                Log.d("GameController", "Game ended successfully")
                 currentState = GameState.GAME_OVER
                 onSuccess()
             }
             .addOnFailureListener { exception ->
+                Log.e("GameController", "Failed to end game: ${exception.message}")
                 onFailure(exception)
             }
     }
@@ -445,26 +511,17 @@ class GameController private constructor(private val gameId: String) {
      * Clean up listeners when game is over
      */
     fun cleanup() {
+        Log.d("GameController", "Cleaning up GameController resources")
+
         gameListeners.forEach { listener ->
             gameRef.removeEventListener(listener)
         }
         gameListeners.clear()
 
         // Clean up sub-controllers
-//        roleController?.let {
-//            val method = it.javaClass.getMethod("cleanup")
-//            method.invoke(it)
-//        }
-//
-//        votingController?.let {
-//            val method = it.javaClass.getMethod("cleanup")
-//            method.invoke(it)
-//        }
-//
-//        phaseController?.let {
-//            val method = it.javaClass.getMethod("cleanup")
-//            method.invoke(it)
-//        }
+        roleController = null
+        votingController = null
+        phaseController = null
 
         clearInstance()
     }
