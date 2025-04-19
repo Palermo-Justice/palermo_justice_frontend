@@ -211,15 +211,16 @@ class GameActivity : AppCompatActivity() {
             } // Other states handled elsewhere
         }
 
-        // Update advance button text based on state
-        updateAdvanceButtonText()
+        // Update advance button text and visibility based on state
+        updateAdvanceButtonState()
     }
 
 
     /**
-     * Update the text on the advance phase button based on current state
+     * Update the text and visibility of the advance phase button based on current state
      */
-    private fun updateAdvanceButtonText() {
+    private fun updateAdvanceButtonState() {
+        // First determine the button text based on current state
         val buttonText = when (currentState) {
             GameState.DAY_DISCUSSION -> "Start Voting"
             GameState.DAY_VOTING -> "End Voting"
@@ -229,13 +230,25 @@ class GameActivity : AppCompatActivity() {
             else -> "Next Phase"
         }
 
-        Log.d("GameActivity", "Updating advance button text to: $buttonText")
-        binding.buttonAdvancePhase.text = buttonText
+        // Hide the button completely if game is over
+        if (currentState == GameState.GAME_OVER) {
+            Log.d("GameActivity", "Game is over, hiding advance button")
+            binding.buttonAdvancePhase.visibility = View.GONE
+        } else {
+            // For all other states, show the button if the player is the host
+            binding.buttonAdvancePhase.visibility = if (isHost) View.VISIBLE else View.GONE
+            binding.buttonAdvancePhase.text = buttonText
 
-        // Always ensure the button is enabled for the host
-        if (isHost) {
-            binding.buttonAdvancePhase.isEnabled = true
+            // Always ensure the button is enabled for the host
+            if (isHost) {
+                binding.buttonAdvancePhase.isEnabled = true
+            }
         }
+
+        // Always show the leave game button
+        binding.buttonLeaveGame.visibility = View.VISIBLE
+
+        Log.d("GameActivity", "Updated advance button: text=$buttonText, visible=${binding.buttonAdvancePhase.visibility == View.VISIBLE}")
     }
 
     /**
@@ -274,6 +287,9 @@ class GameActivity : AppCompatActivity() {
                         currentState = GameState.GAME_OVER
                         showGameOverScreen()
                     }
+
+                    // Hide the advance button
+                    binding.buttonAdvancePhase.visibility = View.GONE
                 }
             }
             else -> {}
@@ -348,7 +364,7 @@ class GameActivity : AppCompatActivity() {
             .replace(R.id.fragmentContainer, fragment)
             .commit()
 
-        // Update button visibility
+        // Hide advance button and ensure leave button is visible
         binding.buttonAdvancePhase.visibility = View.GONE
         binding.buttonLeaveGame.visibility = View.VISIBLE
 

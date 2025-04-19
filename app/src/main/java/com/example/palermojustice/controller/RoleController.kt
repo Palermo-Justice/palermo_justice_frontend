@@ -1,5 +1,6 @@
 package com.example.palermojustice.controller
 
+import android.util.Log
 import com.example.palermojustice.model.ActionType
 import com.example.palermojustice.model.Game
 import com.example.palermojustice.model.Role
@@ -28,23 +29,56 @@ class RoleController(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        // Validate the action is appropriate for the role
-        validateAction(action) { isValid, message ->
-            if (isValid) {
-                // Store the action in the appropriate location based on phase
-                val phaseType = if (action.actionType == ActionType.VOTE) "day" else "night"
-                val actionPath = "$phaseType/${action.phaseNumber}/${action.sourcePlayerId}"
-
-                actionsRef.child(actionPath).setValue(action.toMap())
-                    .addOnSuccessListener {
-                        onSuccess()
-                    }
-                    .addOnFailureListener { exception ->
-                        onFailure(exception)
-                    }
-            } else {
-                onFailure(Exception(message))
+        // First check if player has already performed an action this phase
+        checkExistingAction(action.sourcePlayerId, action.phaseNumber, action.actionType) { hasExistingAction ->
+            if (hasExistingAction) {
+                onFailure(Exception("You have already performed an action this phase"))
+                return@checkExistingAction
             }
+
+            // Continue with action validation
+            validateAction(action) { isValid, message ->
+                if (isValid) {
+                    // Store the action in the appropriate location based on phase
+                    val phaseType = if (action.actionType == ActionType.VOTE) "day" else "night"
+                    val actionPath = "$phaseType/${action.phaseNumber}/${action.sourcePlayerId}"
+
+                    actionsRef.child(actionPath).setValue(action.toMap())
+                        .addOnSuccessListener {
+                            onSuccess()
+                        }
+                        .addOnFailureListener { exception ->
+                            onFailure(exception)
+                        }
+                } else {
+                    onFailure(Exception(message))
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if player has already performed an action this phase
+     */
+    private fun checkExistingAction(
+        playerId: String,
+        phaseNumber: Int,
+        actionType: ActionType,
+        callback: (Boolean) -> Unit
+    ) {
+        // Determine action path based on action type
+        val phaseType = if (actionType == ActionType.VOTE) "day" else "night"
+        val actionPath = "$phaseType/$phaseNumber/$playerId"
+
+        // Check if action exists
+        actionsRef.child(actionPath).get().addOnSuccessListener { snapshot ->
+            val hasExistingAction = snapshot.exists()
+            Log.d("RoleController", "Player $playerId has existing $actionType action: $hasExistingAction")
+            callback(hasExistingAction)
+        }.addOnFailureListener { exception ->
+            Log.e("RoleController", "Failed to check existing action: ${exception.message}")
+            // Default to false on error to avoid blocking player actions
+            callback(false)
         }
     }
 

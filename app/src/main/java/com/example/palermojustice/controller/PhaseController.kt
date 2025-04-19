@@ -288,15 +288,21 @@ class PhaseController(private val gameId: String) {
         votingController.tallyVotes(phaseNumber) { voteCounts, executedId ->
             Log.d("PhaseController", "Vote tally results: votes=$voteCounts, executedId=$executedId")
 
-            // If no one was executed (tie or no votes), just save empty result
+            // If no one was executed (tie or no votes), just save empty result and check if game is over
             if (executedId == null) {
                 Log.d("PhaseController", "No player executed (tie or no votes)")
-                val result = GameResult(
-                    phaseNumber = phaseNumber,
-                    state = GameState.EXECUTION_RESULT
-                )
 
-                saveExecutionResult(result, onSuccess, onFailure)
+                // Check if game is over - important to check even if no one was executed
+                checkGameOver { winningTeam ->
+                    val result = GameResult(
+                        phaseNumber = phaseNumber,
+                        state = if (winningTeam != null) GameState.GAME_OVER else GameState.EXECUTION_RESULT,
+                        winningTeam = winningTeam
+                    )
+
+                    Log.d("PhaseController", "Game result after checking: winningTeam=$winningTeam")
+                    saveExecutionResult(result, onSuccess, onFailure)
+                }
                 return@tallyVotes
             }
 
@@ -316,10 +322,10 @@ class PhaseController(private val gameId: String) {
 
                             // Check if game is over
                             checkGameOver { winningTeam ->
-                                // Create result object
+                                // Create result object with appropriate state
                                 val result = GameResult(
                                     phaseNumber = phaseNumber,
-                                    state = GameState.EXECUTION_RESULT,
+                                    state = if (winningTeam != null) GameState.GAME_OVER else GameState.EXECUTION_RESULT,
                                     eliminatedPlayerId = executedId,
                                     eliminatedPlayerName = name,
                                     eliminatedPlayerRole = role,
@@ -327,7 +333,6 @@ class PhaseController(private val gameId: String) {
                                 )
 
                                 Log.d("PhaseController", "Game result: $result")
-
                                 saveExecutionResult(result, onSuccess, onFailure)
                             }
                         }
@@ -390,7 +395,7 @@ class PhaseController(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        Log.d("PhaseController", "Saving execution result for phase ${result.phaseNumber}")
+        Log.d("PhaseController", "Saving execution result for phase ${result.phaseNumber}, state=${result.state}")
 
         // First, save the result to the phase results
         gameRef.child("phaseResults").child(result.phaseNumber.toString())
@@ -398,7 +403,7 @@ class PhaseController(private val gameId: String) {
             .addOnSuccessListener {
                 Log.d("PhaseController", "Phase result saved successfully")
 
-                // If game is over, update game status
+                // If game is over, update game status before calling onSuccess
                 if (result.winningTeam != null) {
                     gameRef.child("status").setValue("finished")
                         .addOnSuccessListener {
@@ -410,9 +415,16 @@ class PhaseController(private val gameId: String) {
                             onFailure(exception)
                         }
                 } else {
-                    // Game continues, transition back to day phase
-                    Log.d("PhaseController", "Execution result saved, ready for next phase")
-                    onSuccess()
+                    // Game continues, update status to day
+                    gameRef.child("status").setValue("day")
+                        .addOnSuccessListener {
+                            Log.d("PhaseController", "Execution result saved, status updated to day")
+                            onSuccess()
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e("PhaseController", "Failed to update status to day: ${exception.message}")
+                            onFailure(exception)
+                        }
                 }
             }
             .addOnFailureListener { exception ->

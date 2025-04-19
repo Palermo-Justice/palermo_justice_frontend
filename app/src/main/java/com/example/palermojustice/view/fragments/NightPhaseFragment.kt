@@ -149,6 +149,9 @@ class NightPhaseFragment : Fragment() {
         }
     }
 
+    /**
+     * Check if player has already performed an action
+     */
     private fun checkExistingActions() {
         if (!canAct || playerRole == null) return
 
@@ -182,7 +185,19 @@ class NightPhaseFragment : Fragment() {
                 binding.buttonPerformAction.text = "Action Submitted"
                 binding.textViewActionStatus.text = "You have already performed your night action."
                 binding.textViewActionStatus.visibility = View.VISIBLE
+
+                // Log that the action was already performed
+                Log.d("NightPhaseFragment", "Player $playerId has already performed a $actionType action")
+            } else {
+                // Reset in case the button was disabled previously
+                hasPerformedAction = false
+                binding.buttonPerformAction.isEnabled = true
+                binding.textViewActionStatus.visibility = View.GONE
+
+                Log.d("NightPhaseFragment", "Player $playerId has not yet performed a $actionType action")
             }
+        }.addOnFailureListener { exception ->
+            Log.e("NightPhaseFragment", "Failed to check existing action: ${exception.message}")
         }
     }
 
@@ -240,9 +255,12 @@ class NightPhaseFragment : Fragment() {
         return phaseNumber
     }
 
+    /**
+     * On resume, always check if an action was performed when returning from RoleActionActivity
+     */
     override fun onResume() {
         super.onResume()
-        // Check if action was performed when returning from RoleActionActivity
+        // Always check if action was performed when returning from RoleActionActivity
         if (canAct && playerRole != null) {
             checkExistingActions()
         }
