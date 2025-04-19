@@ -1,6 +1,8 @@
 package com.example.palermojustice.view.activities
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -15,6 +17,7 @@ import com.example.palermojustice.model.GameResult
 import com.example.palermojustice.model.GameState
 import com.example.palermojustice.model.Player
 import com.example.palermojustice.model.Role
+import com.example.palermojustice.model.Team
 import com.example.palermojustice.utils.NotificationHelper
 import com.example.palermojustice.view.fragments.DayPhaseFragment
 import com.example.palermojustice.view.fragments.NightPhaseFragment
@@ -164,6 +167,7 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+
     /**
      * Handle game state changes
      */
@@ -199,8 +203,8 @@ class GameActivity : AppCompatActivity() {
                 showResultsPhase(newState)
             }
             GameState.GAME_OVER -> {
-                Log.d("GameActivity", "Game over, showing dialog")
-                showGameOverDialog()
+                Log.d("GameActivity", "Game over, showing game over screen")
+                showGameOverScreen()
             }
             else -> {
                 Log.d("GameActivity", "Unhandled state: $newState")
@@ -234,7 +238,12 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Receive game results and update UI
+     */
     private fun onGameResultReceived(result: GameResult) {
+        Log.d("GameActivity", "Received game result: $result")
+
         // Update UI based on results
         when (result.state) {
             GameState.NIGHT_RESULTS -> {
@@ -259,6 +268,12 @@ class GameActivity : AppCompatActivity() {
                 // Show game over notification
                 result.winningTeam?.let { team ->
                     notificationHelper.notifyGameOver(gameId, team.name)
+
+                    // Ensure we show the game over screen
+                    if (currentState != GameState.GAME_OVER) {
+                        currentState = GameState.GAME_OVER
+                        showGameOverScreen()
+                    }
                 }
             }
             else -> {}
@@ -317,6 +332,32 @@ class GameActivity : AppCompatActivity() {
         replaceFragment(fragment)
     }
 
+    /**
+     * Show a proper game over screen
+     */
+    private fun showGameOverScreen() {
+        // Show the results fragment with GAME_OVER state
+        val fragment = ResultsFragment.newInstance(
+            gameId = gameId,
+            playerId = playerId,
+            resultType = GameState.GAME_OVER
+        )
+
+        // Replace the current fragment
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .commit()
+
+        // Update button visibility
+        binding.buttonAdvancePhase.visibility = View.GONE
+        binding.buttonLeaveGame.visibility = View.VISIBLE
+
+        // Show game over dialog after a short delay
+        Handler(Looper.getMainLooper()).postDelayed({
+            showGameOverDialog()
+        }, 1000)
+    }
+
     private fun replaceFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
@@ -352,14 +393,17 @@ class GameActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * Show the game over dialog with options to exit or stay
+     */
     private fun showGameOverDialog() {
         AlertDialog.Builder(this)
             .setTitle("Game Over")
-            .setMessage("The game has ended. Would you like to return to the main menu?")
-            .setPositiveButton("Yes") { _, _ ->
+            .setMessage("The game has ended! You can stay to review the final results or return to the main menu.")
+            .setPositiveButton("Return to Menu") { _, _ ->
                 finish()
             }
-            .setNegativeButton("Stay") { dialog, _ ->
+            .setNegativeButton("Stay and Review") { dialog, _ ->
                 dialog.dismiss()
             }
             .setCancelable(false)

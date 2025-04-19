@@ -1,6 +1,7 @@
 package com.example.palermojustice.view.fragments
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import com.example.palermojustice.firebase.FirebaseManager
 import com.example.palermojustice.model.GameResult
 import com.example.palermojustice.model.GameState
 import com.example.palermojustice.model.Role
+import com.example.palermojustice.model.Team
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
@@ -99,6 +101,12 @@ class ResultsFragment : Fragment() {
         }
 
         binding.textViewResultSubtitle.text = subtitle
+
+        // Make sure all sections are initially hidden until we have data
+        binding.gameOverSection.visibility = View.GONE
+        binding.eliminatedSection.visibility = View.GONE
+        binding.privateResultSection.visibility = View.GONE
+        binding.roundSummarySection.visibility = View.GONE
     }
 
     private fun loadResults() {
@@ -109,6 +117,9 @@ class ResultsFragment : Fragment() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val phaseNumber = snapshot.child("currentPhase").getValue(Long::class.java)?.toInt() ?: 0
                 val resultsSnapshot = snapshot.child("phaseResults").child(phaseNumber.toString())
+                val gameStatus = snapshot.child("status").getValue(String::class.java) ?: ""
+
+                Log.d("ResultsFragment", "Loading results for phase $phaseNumber, status: $gameStatus")
 
                 if (resultsSnapshot.exists()) {
                     // Extract result data
@@ -127,6 +138,15 @@ class ResultsFragment : Fragment() {
                         resultType
                     }
 
+                    // Parse winning team if present
+                    val winningTeam = if (winningTeamStr != null) {
+                        try {
+                            Team.valueOf(winningTeamStr)
+                        } catch (e: IllegalArgumentException) {
+                            null
+                        }
+                    } else null
+
                     val result = GameResult(
                         phaseNumber = phaseNumber,
                         state = state,
@@ -135,7 +155,7 @@ class ResultsFragment : Fragment() {
                         eliminatedPlayerRole = eliminatedPlayerRole,
                         investigationResult = investigationResult,
                         investigatedPlayerId = investigatedPlayerId,
-                        winningTeam = null // We'll handle this separately
+                        winningTeam = winningTeam
                     )
 
                     // Update UI with result
@@ -143,6 +163,14 @@ class ResultsFragment : Fragment() {
 
                     // Check for player-specific private information
                     checkPrivateResults(resultsSnapshot)
+
+                    // Load and display round summary
+                    loadRoundSummary(phaseNumber)
+
+                    // Special handling for game over state
+                    if (gameStatus == "finished" || winningTeam != null) {
+                        showGameOverDetails(winningTeam, snapshot)
+                    }
                 } else {
                     // No results available yet
                     binding.textViewResultMessage.text = "Results are being prepared..."
@@ -212,6 +240,150 @@ class ResultsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    /**
+     * Load and display a summary of the current round
+     */
+    private fun loadRoundSummary(phaseNumber: Int) {
+        val gameRef = FirebaseDatabase.getInstance().getReference("games").child(gameId)
+
+        // Fetch all phase results up to this phase to create a summary
+        gameRef.child("phaseResults").get().addOnSuccessListener { snapshot ->
+            val summaryBuilder = StringBuilder()
+            summaryBuilder.append("Round ${phaseNumber/2 + 1} Summary:\n\n")
+
+            // Get all phase results up to the current phase
+            val phaseResults = mutableListOf<Pair<Int, DataSnapshot>>()
+            for (phaseSnapshot in snapshot.children) {
+                val phaseNum = phaseSnapshot.key?.toIntOrNull() ?: continue
+                if (phaseNum <= phaseNumber) {
+                    phaseResults.add(Pair(phaseNum, phaseSnapshot))
+                }
+            }
+
+            // Sort by phase number
+            phaseResults.sortBy { it.first }
+
+            // Build summary text
+            val currentRoundResults = phaseResults.filter { it.first > phaseNumber - 2 }
+            for (pair in currentRoundResults) {
+                val result = pair.second
+                val stateStr = result.child("state").getValue(String::class.java) ?: continue
+                val state = try {
+                    GameState.valueOf(stateStr)
+                } catch (e: IllegalArgumentException) {
+                    continue
+                }
+
+                // Add night result
+                if (state == GameState.NIGHT_RESULTS) {
+                    val eliminatedName = result.child("eliminatedPlayerName").getValue(String::class.java)
+                    val eliminatedRole = result.child("eliminatedPlayerRole").getValue(String::class.java)
+
+                    if (eliminatedName != null) {
+                        summaryBuilder.append("Night: $eliminatedName (${getRoleDisplayName(eliminatedRole)}) was eliminated by the Mafia.\n")
+                    } else {
+                        summaryBuilder.append("Night: No one was eliminated.\n")
+                    }
+                }
+
+                // Add day result
+                if (state == GameState.EXECUTION_RESULT) {
+                    val eliminatedName = result.child("eliminatedPlayerName").getValue(String::class.java)
+                    val eliminatedRole = result.child("eliminatedPlayerRole").getValue(String::class.java)
+
+                    if (eliminatedName != null) {
+                        summaryBuilder.append("Day: $eliminatedName (${getRoleDisplayName(eliminatedRole)}) was executed by the town.\n")
+                    } else {
+                        summaryBuilder.append("Day: The town couldn't reach a consensus. No one was executed.\n")
+                    }
+                }
+            }
+
+            // Display summary
+            binding.textViewRoundSummary.text = summaryBuilder.toString()
+            binding.roundSummarySection.visibility = View.VISIBLE
+        }
+    }
+
+    /**
+     * Show detailed game over information
+     */
+    private fun showGameOverDetails(winningTeam: Team?, snapshot: DataSnapshot) {
+        val playersSnapshot = snapshot.child("players")
+        val summaryBuilder = StringBuilder()
+
+        // Set game over title
+        binding.textViewResultTitle.text = "GAME OVER"
+
+        // Add winning team information
+        if (winningTeam != null) {
+            val teamName = if (winningTeam == Team.MAFIA) "MAFIA" else "CITIZENS"
+            binding.textViewWinningTeam.text = "Winner: $teamName"
+
+            summaryBuilder.append("The $teamName have won the game!\n\n")
+
+            if (winningTeam == Team.MAFIA) {
+                summaryBuilder.append("The Mafia has taken control of the town. The citizens have failed to identify and eliminate the threats among them.\n\n")
+            } else {
+                summaryBuilder.append("The citizens have successfully identified and eliminated all mafia members. The town is now safe again!\n\n")
+            }
+        }
+
+        // Add player details
+        summaryBuilder.append("FINAL ROLES:\n")
+        val playersList = mutableListOf<Pair<String, DataSnapshot>>()
+        for (playerSnapshot in playersSnapshot.children) {
+            playersList.add(Pair(playerSnapshot.key ?: "", playerSnapshot))
+        }
+
+        // First show mafia members
+        summaryBuilder.append("\nMafia Members:\n")
+        for (pair in playersList) {
+            val player = pair.second
+            val name = player.child("name").getValue(String::class.java) ?: continue
+            val role = player.child("role").getValue(String::class.java) ?: continue
+            val isAlive = player.child("isAlive").getValue(Boolean::class.java) ?: true
+            val status = if (isAlive) "Survived" else "Eliminated"
+
+            if (role == Role.MAFIOSO.name) {
+                summaryBuilder.append("- $name ($status)\n")
+            }
+        }
+
+        // Then show citizens with special roles
+        summaryBuilder.append("\nSpecial Roles:\n")
+        for (pair in playersList) {
+            val player = pair.second
+            val name = player.child("name").getValue(String::class.java) ?: continue
+            val role = player.child("role").getValue(String::class.java) ?: continue
+            val isAlive = player.child("isAlive").getValue(Boolean::class.java) ?: true
+            val status = if (isAlive) "Survived" else "Eliminated"
+
+            if (role != Role.MAFIOSO.name && role != Role.PAESANO.name) {
+                summaryBuilder.append("- $name: ${getRoleDisplayName(role)} ($status)\n")
+            }
+        }
+
+        // Then show regular citizens
+        summaryBuilder.append("\nCitizens:\n")
+        for (pair in playersList) {
+            val player = pair.second
+            val name = player.child("name").getValue(String::class.java) ?: continue
+            val role = player.child("role").getValue(String::class.java) ?: continue
+            val isAlive = player.child("isAlive").getValue(Boolean::class.java) ?: true
+            val status = if (isAlive) "Survived" else "Eliminated"
+
+            if (role == Role.PAESANO.name) {
+                summaryBuilder.append("- $name ($status)\n")
+            }
+        }
+
+        // Update UI with game over details
+        binding.textViewResultMessage.text = summaryBuilder.toString()
+        binding.gameOverSection.visibility = View.VISIBLE
+        binding.eliminatedSection.visibility = View.GONE // Hide eliminated section for cleaner UI
     }
 
     /**
