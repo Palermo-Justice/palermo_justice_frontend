@@ -24,8 +24,8 @@ jobs:
       - name: Grant execute permissions for gradlew
         run: chmod +x ./gradlew 
 
-      - name: Build with Gradle (ignore lint errors)
-        run: ./gradlew build
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
     
       - name: Upload APK
         uses: actions/upload-artifact@v4
