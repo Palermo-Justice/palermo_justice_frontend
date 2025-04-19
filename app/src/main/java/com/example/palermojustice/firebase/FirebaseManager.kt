@@ -1,5 +1,6 @@
 package com.example.palermojustice.firebase
 
+import android.content.Context
 import com.example.palermojustice.model.Game
 import com.example.palermojustice.model.Player
 import com.google.firebase.auth.FirebaseAuth
@@ -12,8 +13,16 @@ object FirebaseManager {
     private val auth = FirebaseAuth.getInstance()
 
     // Get current user ID or generate a guest ID
-    fun getCurrentUserId(): String {
-        return auth.currentUser?.uid ?: "guest_${Random.nextInt(100000, 999999)}"
+    fun getCurrentUserId(context: Context): String {
+        val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        var userId = prefs.getString("user_id", null)
+
+        if (userId == null) {
+            userId = "guest_${Random.nextInt(100000, 999999)}"
+            prefs.edit().putString("user_id", userId).apply()
+        }
+
+        return userId
     }
 
     // Create a new game room

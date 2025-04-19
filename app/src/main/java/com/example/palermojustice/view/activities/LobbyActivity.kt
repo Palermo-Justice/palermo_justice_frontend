@@ -1,6 +1,7 @@
 package com.example.palermojustice.view.activities
 
 import android.os.Bundle
+import android.content.Intent
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -10,6 +11,8 @@ import com.example.palermojustice.firebase.FirebaseManager
 import com.example.palermojustice.model.Player
 import com.example.palermojustice.view.adapters.PlayerAdapter
 import com.google.firebase.database.ValueEventListener
+import com.example.palermojustice.controller.GameController
+import android.util.Log
 
 class LobbyActivity : AppCompatActivity() {
 
@@ -54,8 +57,22 @@ class LobbyActivity : AppCompatActivity() {
 
         // Button event listeners
         binding.buttonStartGame.setOnClickListener {
-            // Start game logic will be implemented later
-            Toast.makeText(this, "Start game functionality coming soon", Toast.LENGTH_SHORT).show()
+            // Only host can start the game
+            val controller = GameController.getInstance(gameId)
+            controller.startGame(
+                onSuccess = {
+                    // Game state is updated to "night" in Firebase, listeners will react
+                    runOnUiThread {
+                        Toast.makeText(this, "Game started!", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onFailure = { exception ->
+                    runOnUiThread {
+                        Toast.makeText(this, "Failed to start game: ${exception.message}", Toast.LENGTH_SHORT).show()
+                        Log.e("LobbyActivity", "Error while updating game", exception)
+                    }
+                }
+            )
         }
 
         binding.buttonLeaveGame.setOnClickListener {
@@ -86,8 +103,15 @@ class LobbyActivity : AppCompatActivity() {
 
                 // Check if game has started
                 if (game.status != "lobby") {
-                    // Game started - we'll implement this navigation later
-                    Toast.makeText(this, "Game has started!", Toast.LENGTH_SHORT).show()
+                    // Navigate to GameActivity
+                    val intent = Intent(this, GameActivity::class.java).apply {
+                        putExtra("GAME_ID", gameId)
+                        putExtra("PLAYER_ID", playerId)
+                        putExtra("IS_HOST", isHost)
+                    }
+                    startActivity(intent)
+                    finish()
+                    return@listenToGame
                 }
             },
             onError = { exception ->

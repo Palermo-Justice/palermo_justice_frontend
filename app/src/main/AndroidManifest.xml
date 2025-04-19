@@ -30,6 +30,10 @@
             android:exported="false" />
         <activity android:name=".view.activities.LobbyActivity"
             android:exported="false" />
+        <activity android:name=".view.activities.GameActivity"
+            android:exported="false" />
+        <activity android:name=".view.activities.RoleActionActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

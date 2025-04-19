@@ -37,7 +37,7 @@ class JoinGameActivity : AppCompatActivity() {
         binding.buttonJoinGame.isEnabled = false
 
         // Create player object
-        val playerId = FirebaseManager.getCurrentUserId()
+        val playerId = FirebaseManager.getCurrentUserId(this)
         val player = Player(id = playerId, name = playerName)
 
         // Join game by code
