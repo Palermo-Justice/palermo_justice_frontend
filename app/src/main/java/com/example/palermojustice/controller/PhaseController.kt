@@ -1,5 +1,6 @@
 package com.example.palermojustice.controller
 
+import android.util.Log
 import com.example.palermojustice.model.*
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
@@ -86,6 +87,7 @@ class PhaseController(private val gameId: String) {
                     val playerId = playerSnapshot.key ?: return@forEach
                     val name = playerSnapshot.child("name").getValue(String::class.java) ?: ""
                     val role = playerSnapshot.child("role").getValue(String::class.java)
+                    // Default to true if isAlive is not explicitly set
                     val isAlive = playerSnapshot.child("isAlive").getValue(Boolean::class.java) ?: true
 
                     players[playerId] = Player(
@@ -94,6 +96,11 @@ class PhaseController(private val gameId: String) {
                         role = role,
                         isAlive = isAlive
                     )
+                }
+
+                // Debug log player status
+                players.forEach { (id, player) ->
+                    Log.d("PhaseController", "Player: ${player.name}, Role: ${player.role}, Alive: ${player.isAlive}")
                 }
 
                 // Process night actions in order of priority
@@ -275,10 +282,15 @@ class PhaseController(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        Log.d("PhaseController", "Processing voting results for phase $phaseNumber")
+
         // Tally votes
         votingController.tallyVotes(phaseNumber) { voteCounts, executedId ->
+            Log.d("PhaseController", "Vote tally results: votes=$voteCounts, executedId=$executedId")
+
             // If no one was executed (tie or no votes), just save empty result
             if (executedId == null) {
+                Log.d("PhaseController", "No player executed (tie or no votes)")
                 val result = GameResult(
                     phaseNumber = phaseNumber,
                     state = GameState.EXECUTION_RESULT
@@ -294,10 +306,14 @@ class PhaseController(private val gameId: String) {
                     val name = playerSnapshot.child("name").getValue(String::class.java) ?: ""
                     val role = playerSnapshot.child("role").getValue(String::class.java) ?: ""
 
+                    Log.d("PhaseController", "Executing player: $name, role: $role")
+
                     // Mark player as dead
                     gameRef.child("players").child(executedId).child("isAlive")
                         .setValue(false)
                         .addOnSuccessListener {
+                            Log.d("PhaseController", "Player marked as dead, checking game over condition")
+
                             // Check if game is over
                             checkGameOver { winningTeam ->
                                 // Create result object
@@ -310,18 +326,23 @@ class PhaseController(private val gameId: String) {
                                     winningTeam = winningTeam
                                 )
 
+                                Log.d("PhaseController", "Game result: $result")
+
                                 saveExecutionResult(result, onSuccess, onFailure)
                             }
                         }
                         .addOnFailureListener { exception ->
+                            Log.e("PhaseController", "Failed to mark player as dead: ${exception.message}")
                             onFailure(exception)
                         }
                 }
                 .addOnFailureListener { exception ->
+                    Log.e("PhaseController", "Failed to get executed player data: ${exception.message}")
                     onFailure(exception)
                 }
         }
     }
+
 
     /**
      * Check if the game is over after execution
@@ -369,12 +390,33 @@ class PhaseController(private val gameId: String) {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        Log.d("PhaseController", "Saving execution result for phase ${result.phaseNumber}")
+
+        // First, save the result to the phase results
         gameRef.child("phaseResults").child(result.phaseNumber.toString())
             .setValue(result.toMap())
             .addOnSuccessListener {
-                onSuccess()
+                Log.d("PhaseController", "Phase result saved successfully")
+
+                // If game is over, update game status
+                if (result.winningTeam != null) {
+                    gameRef.child("status").setValue("finished")
+                        .addOnSuccessListener {
+                            Log.d("PhaseController", "Game marked as finished with winning team: ${result.winningTeam}")
+                            onSuccess()
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e("PhaseController", "Failed to update game status to finished: ${exception.message}")
+                            onFailure(exception)
+                        }
+                } else {
+                    // Game continues, transition back to day phase
+                    Log.d("PhaseController", "Execution result saved, ready for next phase")
+                    onSuccess()
+                }
             }
             .addOnFailureListener { exception ->
+                Log.e("PhaseController", "Failed to save execution result: ${exception.message}")
                 onFailure(exception)
             }
     }

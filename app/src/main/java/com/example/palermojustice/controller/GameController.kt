@@ -192,8 +192,10 @@ class GameController private constructor(private val gameId: String) {
                 updates["status"] = "night"
                 updates["currentPhase"] = 1
 
+                // Make sure all players are set to alive when game starts
                 roleAssignments.forEach { (playerId, role) ->
                     updates["players/$playerId/role"] = role.name
+                    updates["players/$playerId/isAlive"] = true  // Explicitly set all players to alive
                 }
 
                 gameRef.updateChildren(updates)
@@ -294,33 +296,88 @@ class GameController private constructor(private val gameId: String) {
         // Get next state
         val nextState = currentState.getNextState()
 
+        // Log the state transition attempt
+        Log.d("GameController", "Attempting to advance from $currentState to $nextState")
+
         // Special handling for each state transition
         when (nextState) {
             GameState.NIGHT -> {
                 // Increment phase number when transitioning to night
                 currentPhaseNumber++
-                phaseController?.beginNightPhase(currentPhaseNumber, onSuccess, onFailure)
+                phaseController?.beginNightPhase(currentPhaseNumber,
+                    onSuccess = {
+                        Log.d("GameController", "Successfully advanced to NIGHT phase $currentPhaseNumber")
+                        currentState = nextState
+                        onSuccess()
+                    },
+                    onFailure = { exception ->
+                        Log.e("GameController", "Failed to advance to NIGHT phase: ${exception.message}")
+                        onFailure(exception)
+                    }
+                )
             }
             GameState.NIGHT_RESULTS -> {
-                phaseController?.processNightActions(currentPhaseNumber, onSuccess, onFailure)
+                phaseController?.processNightActions(currentPhaseNumber,
+                    onSuccess = {
+                        Log.d("GameController", "Successfully processed night actions")
+                        currentState = nextState
+                        onSuccess()
+                    },
+                    onFailure = { exception ->
+                        Log.e("GameController", "Failed to process night actions: ${exception.message}")
+                        onFailure(exception)
+                    }
+                )
             }
             GameState.DAY_DISCUSSION -> {
-                phaseController?.beginDayPhase(currentPhaseNumber, onSuccess, onFailure)
+                phaseController?.beginDayPhase(currentPhaseNumber,
+                    onSuccess = {
+                        Log.d("GameController", "Successfully advanced to DAY_DISCUSSION")
+                        currentState = nextState
+                        onSuccess()
+                    },
+                    onFailure = { exception ->
+                        Log.e("GameController", "Failed to advance to DAY_DISCUSSION: ${exception.message}")
+                        onFailure(exception)
+                    }
+                )
             }
             GameState.DAY_VOTING -> {
-                phaseController?.beginVotingPhase(currentPhaseNumber, onSuccess, onFailure)
+                phaseController?.beginVotingPhase(currentPhaseNumber,
+                    onSuccess = {
+                        Log.d("GameController", "Successfully advanced to DAY_VOTING")
+                        currentState = nextState
+                        onSuccess()
+                    },
+                    onFailure = { exception ->
+                        Log.e("GameController", "Failed to advance to DAY_VOTING: ${exception.message}")
+                        onFailure(exception)
+                    }
+                )
             }
             GameState.EXECUTION_RESULT -> {
-                phaseController?.processVotingResults(currentPhaseNumber, onSuccess, onFailure)
+                phaseController?.processVotingResults(currentPhaseNumber,
+                    onSuccess = {
+                        Log.d("GameController", "Successfully processed voting results")
+                        currentState = nextState
+                        onSuccess()
+                    },
+                    onFailure = { exception ->
+                        Log.e("GameController", "Failed to process voting results: ${exception.message}")
+                        onFailure(exception)
+                    }
+                )
             }
             else -> {
                 // Simple state transition for other states
                 gameRef.child("status").setValue(getFirebaseStatusForState(nextState))
                     .addOnSuccessListener {
+                        Log.d("GameController", "Advanced to state: $nextState")
                         currentState = nextState
                         onSuccess()
                     }
                     .addOnFailureListener { exception ->
+                        Log.e("GameController", "Failed to advance state: ${exception.message}")
                         onFailure(exception)
                     }
             }
@@ -394,20 +451,20 @@ class GameController private constructor(private val gameId: String) {
         gameListeners.clear()
 
         // Clean up sub-controllers
-        roleController?.let {
-            val method = it.javaClass.getMethod("cleanup")
-            method.invoke(it)
-        }
-
-        votingController?.let {
-            val method = it.javaClass.getMethod("cleanup")
-            method.invoke(it)
-        }
-
-        phaseController?.let {
-            val method = it.javaClass.getMethod("cleanup")
-            method.invoke(it)
-        }
+//        roleController?.let {
+//            val method = it.javaClass.getMethod("cleanup")
+//            method.invoke(it)
+//        }
+//
+//        votingController?.let {
+//            val method = it.javaClass.getMethod("cleanup")
+//            method.invoke(it)
+//        }
+//
+//        phaseController?.let {
+//            val method = it.javaClass.getMethod("cleanup")
+//            method.invoke(it)
+//        }
 
         clearInstance()
     }

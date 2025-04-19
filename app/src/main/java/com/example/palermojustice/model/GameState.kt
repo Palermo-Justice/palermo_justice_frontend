@@ -14,6 +14,7 @@ enum class GameState(val displayName: String) {
     NIGHT_RESULTS("Night Results"),
     GAME_OVER("Game Over");
 
+
     /**
      * Returns the next game state based on the current state
      */

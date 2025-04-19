@@ -1,6 +1,7 @@
 package com.example.palermojustice.view.activities
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -95,6 +96,9 @@ class GameActivity : AppCompatActivity() {
                 // Update current player
                 currentPlayer = game.players[playerId]
 
+                // Debug log to check player status
+                Log.d("GameActivity", "Player status: ${currentPlayer?.name}, alive: ${currentPlayer?.isAlive}, role: ${currentPlayer?.role}")
+
                 // Check if player is still in the game
                 if (currentPlayer == null) {
                     Toast.makeText(this, "You have been removed from the game", Toast.LENGTH_SHORT).show()
@@ -160,9 +164,18 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Handle game state changes
+     */
     private fun onGameStateChanged(newState: GameState) {
+        // Log the state change
+        Log.d("GameActivity", "Game state changing from $currentState to $newState")
+
         // Only update if state has changed
-        if (currentState == newState) return
+        if (currentState == newState) {
+            Log.d("GameActivity", "State unchanged, skipping update")
+            return
+        }
 
         currentState = newState
 
@@ -173,17 +186,35 @@ class GameActivity : AppCompatActivity() {
 
         // Update UI based on new state
         when (newState) {
-            GameState.NIGHT -> showNightPhase()
-            GameState.DAY_DISCUSSION, GameState.DAY_VOTING -> showDayPhase(newState)
-            GameState.NIGHT_RESULTS, GameState.EXECUTION_RESULT -> showResultsPhase(newState)
-            GameState.GAME_OVER -> showGameOverDialog()
-            else -> {} // Other states handled elsewhere
+            GameState.NIGHT -> {
+                Log.d("GameActivity", "Showing night phase UI")
+                showNightPhase()
+            }
+            GameState.DAY_DISCUSSION, GameState.DAY_VOTING -> {
+                Log.d("GameActivity", "Showing day phase UI for state: $newState")
+                showDayPhase(newState)
+            }
+            GameState.NIGHT_RESULTS, GameState.EXECUTION_RESULT -> {
+                Log.d("GameActivity", "Showing results phase UI for state: $newState")
+                showResultsPhase(newState)
+            }
+            GameState.GAME_OVER -> {
+                Log.d("GameActivity", "Game over, showing dialog")
+                showGameOverDialog()
+            }
+            else -> {
+                Log.d("GameActivity", "Unhandled state: $newState")
+            } // Other states handled elsewhere
         }
 
         // Update advance button text based on state
         updateAdvanceButtonText()
     }
 
+
+    /**
+     * Update the text on the advance phase button based on current state
+     */
     private fun updateAdvanceButtonText() {
         val buttonText = when (currentState) {
             GameState.DAY_DISCUSSION -> "Start Voting"
@@ -194,7 +225,13 @@ class GameActivity : AppCompatActivity() {
             else -> "Next Phase"
         }
 
+        Log.d("GameActivity", "Updating advance button text to: $buttonText")
         binding.buttonAdvancePhase.text = buttonText
+
+        // Always ensure the button is enabled for the host
+        if (isHost) {
+            binding.buttonAdvancePhase.isEnabled = true
+        }
     }
 
     private fun onGameResultReceived(result: GameResult) {

@@ -1,5 +1,6 @@
 package com.example.palermojustice.controller
 
+import android.util.Log
 import com.example.palermojustice.model.ActionType
 import com.example.palermojustice.model.RoleAction
 import com.google.firebase.database.DataSnapshot
@@ -54,6 +55,8 @@ class VotingController(private val gameId: String) {
         phaseNumber: Int,
         callback: (Map<String, Int>, String?) -> Unit
     ) {
+        Log.d("VotingController", "Tallying votes for phase $phaseNumber")
+
         votesRef.child(phaseNumber.toString()).get().addOnSuccessListener { snapshot ->
             val voteCounts = mutableMapOf<String, Int>()
 
@@ -65,6 +68,8 @@ class VotingController(private val gameId: String) {
                         voteCounts[targetId] = (voteCounts[targetId] ?: 0) + 1
                     }
                 }
+
+                Log.d("VotingController", "Raw vote counts: $voteCounts")
 
                 // Determine who got the most votes
                 var maxVotes = 0
@@ -86,16 +91,21 @@ class VotingController(private val gameId: String) {
 
                 // In case of a tie, no one is executed
                 if (tie) {
+                    Log.d("VotingController", "Tied vote, no execution")
                     executedId = null
+                } else {
+                    Log.d("VotingController", "Most votes ($maxVotes) for player $executedId")
                 }
 
                 callback(voteCounts, executedId)
             } else {
                 // No votes
+                Log.d("VotingController", "No votes found for phase $phaseNumber")
                 callback(emptyMap(), null)
             }
-        }.addOnFailureListener {
+        }.addOnFailureListener { exception ->
             // Return empty result on failure
+            Log.e("VotingController", "Error tallying votes: ${exception.message}")
             callback(emptyMap(), null)
         }
     }
