@@ -2,6 +2,7 @@ package com.example.palermojustice.view.fragments
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -73,7 +74,10 @@ class NightPhaseFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Setup UI based on role
+        // Add debug log to check fragment parameters
+        Log.d("NightPhaseFragment", "Fragment created with canAct=$canAct, playerRole=$playerRole")
+
+        // Setup UI
         setupUI()
 
         // Check if player has already performed an action
@@ -86,11 +90,19 @@ class NightPhaseFragment : Fragment() {
         binding.textViewNightPhaseDescription.text =
             "The town sleeps while special roles perform their actions."
 
+        // Debug log
+        Log.d("NightPhaseFragment", "Setting up UI with playerRole=$playerRole, canAct=$canAct")
+
         // Set role-specific UI
         val roleEnum = try {
             playerRole?.let { Role.valueOf(it) }
         } catch (e: IllegalArgumentException) {
             null
+        }
+
+        // Debug check for Ispettore
+        if (playerRole == Role.ISPETTORE.name) {
+            Log.d("NightPhaseFragment", "Player is Ispettore, canAct=$canAct")
         }
 
         if (roleEnum != null && canAct) {
@@ -109,6 +121,19 @@ class NightPhaseFragment : Fragment() {
                 if (playerRole == Role.PAESANO.name) {
                     binding.textViewRoleInstructions.text =
                         "As a Paesano, you sleep during the night. Wait for the day to begin."
+                } else if (roleEnum?.canActAtNight() == true) {
+                    binding.textViewRoleInstructions.text =
+                        "You cannot perform actions. There might be an issue with your game state. Please wait for the next phase."
+                    // Add special case for Ispettore to still enable the action button if they're supposed to be active
+                    if (playerRole == Role.ISPETTORE.name) {
+                        // Force enable the action for Ispettore in first night
+                        binding.actionSection.visibility = View.VISIBLE
+                        binding.textViewRoleInstructions.text = Role.ISPETTORE.getNightActionDescription()
+                        binding.buttonPerformAction.text = "Perform ${Role.ISPETTORE.displayName} Action"
+                        binding.buttonPerformAction.setOnClickListener {
+                            performRoleAction(Role.ISPETTORE)
+                        }
+                    }
                 } else {
                     binding.textViewRoleInstructions.text =
                         "You cannot perform any actions at night. Wait for the day to begin."
@@ -117,7 +142,10 @@ class NightPhaseFragment : Fragment() {
                 binding.textViewRoleInstructions.text =
                     "You are dead and cannot perform any actions. Wait for the next phase."
             }
-            binding.actionSection.visibility = View.GONE
+
+            if (roleEnum?.canActAtNight() != true || (playerRole != Role.ISPETTORE.name)) {
+                binding.actionSection.visibility = View.GONE
+            }
         }
     }
 
