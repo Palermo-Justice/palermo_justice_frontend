@@ -2,9 +2,9 @@ name: AndroidBuild
 
 on:
   pull_request :
-    branches : [ master ]
+    branches : [ main ]
   push :
-    branches : [ master ]
+    branches : [ main ]
   workflow_dispatch:
 
 jobs:
@@ -24,11 +24,14 @@ jobs:
       - name: Grant execute permissions for gradlew
         run: chmod +x ./gradlew 
 
-      - name: Build with Gradle (ignore lint errors)
-        run: ./gradlew build -Pandroid.injected.lint.abortOnError=false
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: List build outputs
+        run: ls -R app/build/outputs/
     
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PalermoJustice.apk
-          path: android/build/outputs/apk/debug/android-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
