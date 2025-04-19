@@ -13,6 +13,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.FirebaseDatabase
+import android.graphics.Typeface
 
 /**
  * Fragment for displaying game phase results.
@@ -199,11 +200,31 @@ class ResultsFragment : Fragment() {
         // Show main result message
         binding.textViewResultMessage.text = result.getPublicDescription()
 
+        // Add a more prominent heading for night results
+        if (resultType == GameState.NIGHT_RESULTS) {
+            binding.textViewResultTitle.text = "NIGHT RESULTS"
+            binding.textViewResultSubtitle.text = "Here's what happened during the night..."
+
+            // Make the result message more prominent without using problematic methods
+            binding.textViewResultMessage.textSize = 18f
+            binding.textViewResultMessage.setTypeface(binding.textViewResultMessage.typeface, Typeface.BOLD)
+        }
+
         // Show eliminated player info if available
         if (result.eliminatedPlayerName != null) {
             binding.textViewEliminatedPlayer.text = "Eliminated: ${result.eliminatedPlayerName}"
             binding.textViewEliminatedRole.text = "Role: ${getRoleDisplayName(result.eliminatedPlayerRole)}"
             binding.eliminatedSection.visibility = View.VISIBLE
+
+            // If this is night results and someone was eliminated, add visual emphasis
+            // Using simpler styling to avoid compatibility issues
+            if (resultType == GameState.NIGHT_RESULTS) {
+                // Instead of setting background drawable which might not exist
+                binding.eliminatedSection.setBackgroundColor(0xFFFFDDDD.toInt()) // Light red background
+
+                // Set text color directly to avoid ContextCompat call
+                binding.textViewEliminatedPlayer.setTextColor(0xFFCC0000.toInt()) // Dark red text
+            }
         } else {
             binding.eliminatedSection.visibility = View.GONE
         }
@@ -214,6 +235,11 @@ class ResultsFragment : Fragment() {
             binding.gameOverSection.visibility = View.VISIBLE
         } else {
             binding.gameOverSection.visibility = View.GONE
+        }
+
+        // Always show the round summary for night results
+        if (resultType == GameState.NIGHT_RESULTS) {
+            loadRoundSummary(result.phaseNumber)
         }
     }
 

@@ -100,8 +100,10 @@ class GameController private constructor(private val gameId: String) {
                     currentState = when (stateStr) {
                         "lobby" -> GameState.LOBBY
                         "night" -> GameState.NIGHT
+                        "night_results" -> GameState.NIGHT_RESULTS
                         "day" -> GameState.DAY_DISCUSSION
                         "voting" -> GameState.DAY_VOTING
+                        "execution_results" -> GameState.EXECUTION_RESULT
                         "finished" -> GameState.GAME_OVER
                         else -> GameState.LOBBY
                     }
@@ -130,7 +132,7 @@ class GameController private constructor(private val gameId: String) {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("GameController", "Firebase listener cancelled: ${error.message}")
+                Log.e("GameController", "Firebase listener cancelled: ${error.toException().message}")
             }
         }
 
@@ -150,6 +152,7 @@ class GameController private constructor(private val gameId: String) {
         val investigationResult = snapshot.child("investigationResult").getValue(Boolean::class.java)
         val investigatedPlayerId = snapshot.child("investigatedPlayerId").getValue(String::class.java)
         val protectedPlayerId = snapshot.child("protectedPlayerId").getValue(String::class.java)
+        val nightSummary = snapshot.child("nightSummary").getValue(String::class.java) ?: ""
         val winningTeamStr = snapshot.child("winningTeam").getValue(String::class.java)
 
         val winningTeam = winningTeamStr?.let {
@@ -174,7 +177,8 @@ class GameController private constructor(private val gameId: String) {
             investigationResult = investigationResult,
             investigatedPlayerId = investigatedPlayerId,
             protectedPlayerId = protectedPlayerId,
-            winningTeam = winningTeam
+            winningTeam = winningTeam,
+            nightSummary = nightSummary
         )
     }
 
@@ -500,9 +504,10 @@ class GameController private constructor(private val gameId: String) {
         return when (state) {
             GameState.LOBBY -> "lobby"
             GameState.NIGHT, GameState.ROLE_ASSIGNMENT -> "night"
-            GameState.DAY_DISCUSSION, GameState.NIGHT_RESULTS -> "day"
+            GameState.NIGHT_RESULTS -> "night_results"
+            GameState.DAY_DISCUSSION -> "day"
             GameState.DAY_VOTING -> "voting"
-            GameState.EXECUTION_RESULT -> "day"
+            GameState.EXECUTION_RESULT -> "execution_results"
             GameState.GAME_OVER -> "finished"
         }
     }

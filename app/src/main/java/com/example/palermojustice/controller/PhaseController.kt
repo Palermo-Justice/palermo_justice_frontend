@@ -45,9 +45,6 @@ class PhaseController(private val gameId: String) {
             }
     }
 
-    /**
-     * Process all night actions and determine results
-     */
     fun processNightActions(
         phaseNumber: Int,
         onSuccess: () -> Unit,
@@ -119,7 +116,7 @@ class PhaseController(private val gameId: String) {
                     Log.d("PhaseController", "Player: ${player.name}, Role: ${player.role}, Alive: ${player.isAlive}")
                 }
 
-                // Process night actions in order of priority
+                // Process night actions in order of priority with night summary
                 val result = processNightActionsInOrder(actions, players, phaseNumber)
 
                 // Save results to database
@@ -135,10 +132,7 @@ class PhaseController(private val gameId: String) {
     }
 
     /**
-     * Process night actions in priority order:
-     * 1. Protection actions (Sgarrista, Il Prete)
-     * 2. Kill actions (Mafia)
-     * 3. Investigation actions (Ispettore)
+     * Process all night actions and determine results
      */
     private fun processNightActionsInOrder(
         actions: List<RoleAction>,
@@ -151,6 +145,7 @@ class PhaseController(private val gameId: String) {
         var investigationResult: Boolean? = null
         var investigatedPlayerId: String? = null
         var protectedPlayerId: String? = null
+        var nightSummary = StringBuilder("Night Phase Results:\n\n")
 
         Log.d("PhaseController", "Processing ${actions.size} night actions in order of priority")
 
@@ -167,6 +162,24 @@ class PhaseController(private val gameId: String) {
         if (protectedPlayers.isNotEmpty()) {
             protectedPlayerId = protectedPlayers.first() // Save one for results
             Log.d("PhaseController", "Protected players: $protectedPlayers")
+
+            // Add protection details to summary
+            if (protectedPlayers.size == 1) {
+                val protectorAction = protectionActions.first()
+                val protectorRole = players[protectorAction.sourcePlayerId]?.role
+                val protectorName = players[protectorAction.sourcePlayerId]?.name ?: "Someone"
+                val protectedName = players[protectedPlayerId]?.name ?: "a player"
+
+                if (protectorRole == Role.SGARRISTA.name) {
+                    nightSummary.append("$protectorName (Sgarrista) protected $protectedName during the night.\n")
+                } else {
+                    nightSummary.append("$protectorName (Il Prete) blessed $protectedName during the night.\n")
+                }
+            } else if (protectedPlayers.size > 1) {
+                nightSummary.append("${protectedPlayers.size} players were protected during the night.\n")
+            }
+
+            nightSummary.append("\n")
         }
 
         // Get kill targets
@@ -181,19 +194,41 @@ class PhaseController(private val gameId: String) {
         Log.d("PhaseController", "Kill target: $killTargets")
 
         // Process kill if target isn't protected
-        if (killTargets != null && !protectedPlayers.contains(killTargets)) {
-            eliminatedPlayerId = killTargets
-            eliminatedPlayerName = players[killTargets]?.name
-            eliminatedPlayerRole = players[killTargets]?.role
+        if (killActions.isNotEmpty()) {
+            if (killTargets != null) {
+                val targetName = players[killTargets]?.name ?: "Unknown"
 
-            Log.d("PhaseController", "Player $eliminatedPlayerName ($eliminatedPlayerRole) will be eliminated")
+                if (!protectedPlayers.contains(killTargets)) {
+                    eliminatedPlayerId = killTargets
+                    eliminatedPlayerName = players[killTargets]?.name
+                    eliminatedPlayerRole = players[killTargets]?.role
 
-            // Update player status to dead
-            gameRef.child("players").child(killTargets).child("isAlive")
-                .setValue(false)
-        } else if (killTargets != null && protectedPlayers.contains(killTargets)) {
-            Log.d("PhaseController", "Kill target was protected!")
+                    Log.d("PhaseController", "Player $eliminatedPlayerName ($eliminatedPlayerRole) will be eliminated")
+                    nightSummary.append("The Mafia targeted and eliminated $eliminatedPlayerName during the night.\n")
+                    if (eliminatedPlayerRole != null) {
+                        val roleName = try {
+                            Role.valueOf(eliminatedPlayerRole).displayName
+                        } catch (e: IllegalArgumentException) {
+                            eliminatedPlayerRole
+                        }
+                        nightSummary.append("$eliminatedPlayerName was a $roleName.\n")
+                    }
+
+                    // Update player status to dead
+                    gameRef.child("players").child(killTargets).child("isAlive")
+                        .setValue(false)
+                } else {
+                    Log.d("PhaseController", "Kill target was protected!")
+                    nightSummary.append("The Mafia targeted $targetName, but they were protected and survived the night.\n")
+                }
+            } else {
+                nightSummary.append("The Mafia tried to eliminate someone, but failed.\n")
+            }
+        } else {
+            nightSummary.append("The Mafia did not target anyone during the night.\n")
         }
+
+        nightSummary.append("\n")
 
         // Process investigations
         val investigationActions = actions.filter { it.actionType == ActionType.INVESTIGATE }
@@ -206,6 +241,13 @@ class PhaseController(private val gameId: String) {
             // Determine if target is mafia
             val targetRole = players[investigation.targetPlayerId]?.role
             investigationResult = targetRole == Role.MAFIOSO.name
+
+            val inspectorId = investigation.sourcePlayerId
+            val inspectorName = players[inspectorId]?.name ?: "The Inspector"
+            val targetName = players[investigatedPlayerId]?.name ?: "a suspect"
+
+            nightSummary.append("$inspectorName (Ispettore) investigated $targetName during the night.\n")
+            // Note: We don't reveal the result in the public summary
 
             Log.d("PhaseController", "Investigation result: Player ${investigation.targetPlayerId} is Mafia: $investigationResult")
         }
@@ -223,15 +265,23 @@ class PhaseController(private val gameId: String) {
             else -> null
         }
 
-        // If game is over, update game status
+        // If game is over, add to summary
         if (winningTeam != null) {
             Log.d("PhaseController", "Game over! Winning team: $winningTeam")
+
+            nightSummary.append("\nGAME OVER!\n")
+            if (winningTeam == Team.MAFIA) {
+                nightSummary.append("The Mafia has taken control of the town!\n")
+            } else {
+                nightSummary.append("The Citizens have eliminated all Mafia members and saved the town!\n")
+            }
+
             gameRef.child("status").setValue("finished")
             gameRef.child("winningTeam").setValue(winningTeam.name)
         }
 
         return GameResult(
-            phaseNumber = phaseNumber, // Will be set properly here
+            phaseNumber = phaseNumber,
             state = GameState.NIGHT_RESULTS,
             eliminatedPlayerId = eliminatedPlayerId,
             eliminatedPlayerName = eliminatedPlayerName,
@@ -239,18 +289,21 @@ class PhaseController(private val gameId: String) {
             investigationResult = investigationResult,
             investigatedPlayerId = investigatedPlayerId,
             protectedPlayerId = protectedPlayerId,
-            winningTeam = winningTeam
+            winningTeam = winningTeam,
+            nightSummary = nightSummary.toString()
         )
     }
+
+
 
     /**
      * Save night phase results to database
      */
     private fun saveNightResults(
-        phaseNumber: Int,
-        result: GameResult,
-        onSuccess: () -> Unit,
-        onFailure: (Exception) -> Unit
+    phaseNumber: Int,
+    result: GameResult,
+    onSuccess: () -> Unit,
+    onFailure: (Exception) -> Unit
     ) {
         val resultWithPhase = result.copy(phaseNumber = phaseNumber)
 
@@ -258,8 +311,8 @@ class PhaseController(private val gameId: String) {
         gameRef.child("phaseResults").child(phaseNumber.toString())
             .setValue(resultWithPhase.toMap())
             .addOnSuccessListener {
-                // Update game status to day
-                gameRef.child("status").setValue("day")
+                // Update game status to display night results
+                gameRef.child("status").setValue("night_results")
                     .addOnSuccessListener {
                         onSuccess()
                     }

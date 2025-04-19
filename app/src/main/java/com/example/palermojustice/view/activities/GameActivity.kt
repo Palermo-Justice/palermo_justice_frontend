@@ -18,6 +18,7 @@ import com.example.palermojustice.model.GameState
 import com.example.palermojustice.model.Player
 import com.example.palermojustice.model.Role
 import com.example.palermojustice.model.ActionType
+import com.example.palermojustice.utils.Constants
 import com.example.palermojustice.utils.NotificationHelper
 import com.example.palermojustice.view.fragments.DayPhaseFragment
 import com.example.palermojustice.view.fragments.NightPhaseFragment
@@ -194,13 +195,36 @@ class GameActivity : AppCompatActivity() {
                 Log.d("GameActivity", "Showing night phase UI")
                 showNightPhase()
             }
+            GameState.NIGHT_RESULTS -> {
+                Log.d("GameActivity", "Showing night results phase UI")
+                showResultsPhase(newState)
+
+                // Disable the advance button temporarily for the host
+                // to ensure players have time to see the results
+                if (isHost) {
+                    binding.buttonAdvancePhase.isEnabled = false
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        binding.buttonAdvancePhase.isEnabled = true
+                        updateButtonText()
+                    }, Constants.RESULT_DISPLAY_TIME) // This uses the existing RESULT_DISPLAY_TIME constant (10 seconds)
+                }
+            }
             GameState.DAY_DISCUSSION, GameState.DAY_VOTING -> {
                 Log.d("GameActivity", "Showing day phase UI for state: $newState")
                 showDayPhase(newState)
             }
-            GameState.NIGHT_RESULTS, GameState.EXECUTION_RESULT -> {
-                Log.d("GameActivity", "Showing results phase UI for state: $newState")
+            GameState.EXECUTION_RESULT -> {
+                Log.d("GameActivity", "Showing execution results phase UI")
                 showResultsPhase(newState)
+
+                // Similar to night results, ensure players see execution results
+                if (isHost) {
+                    binding.buttonAdvancePhase.isEnabled = false
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        binding.buttonAdvancePhase.isEnabled = true
+                        updateButtonText()
+                    }, Constants.RESULT_DISPLAY_TIME)
+                }
             }
             GameState.GAME_OVER -> {
                 Log.d("GameActivity", "Game over, showing game over screen")
@@ -211,8 +235,22 @@ class GameActivity : AppCompatActivity() {
             } // Other states handled elsewhere
         }
 
-        // Update advance button text and visibility based on state
-        updateAdvanceButtonState()
+        updateButtonVisibility()
+    }
+
+    private fun updateButtonText() {
+        // Determine the button text based on current state
+        val buttonText = when (currentState) {
+            GameState.DAY_DISCUSSION -> "Start Voting"
+            GameState.DAY_VOTING -> "End Voting"
+            GameState.EXECUTION_RESULT -> "Begin Night"
+            GameState.NIGHT -> "End Night"
+            GameState.NIGHT_RESULTS -> "Begin Day Discussion"
+            else -> "Next Phase"
+        }
+
+        binding.buttonAdvancePhase.text = buttonText
+        Log.d("GameActivity", "Updated advance button text: $buttonText")
     }
 
 
@@ -224,9 +262,9 @@ class GameActivity : AppCompatActivity() {
         val buttonText = when (currentState) {
             GameState.DAY_DISCUSSION -> "Start Voting"
             GameState.DAY_VOTING -> "End Voting"
-            GameState.EXECUTION_RESULT -> "Begin Night"
+            GameState.EXECUTION_RESULT -> "Begin Night" // This will be temporarily disabled
             GameState.NIGHT -> "End Night"
-            GameState.NIGHT_RESULTS -> "Begin Day"
+            GameState.NIGHT_RESULTS -> "Begin Day Discussion" // This will be temporarily disabled
             else -> "Next Phase"
         }
 
@@ -239,8 +277,11 @@ class GameActivity : AppCompatActivity() {
             binding.buttonAdvancePhase.visibility = if (isHost) View.VISIBLE else View.GONE
             binding.buttonAdvancePhase.text = buttonText
 
-            // Always ensure the button is enabled for the host
-            if (isHost) {
+            // Button enabling is handled in onGameStateChanged for results phases
+            // to enforce minimum viewing time
+            if (isHost &&
+                currentState != GameState.NIGHT_RESULTS &&
+                currentState != GameState.EXECUTION_RESULT) {
                 binding.buttonAdvancePhase.isEnabled = true
             }
         }
@@ -249,6 +290,29 @@ class GameActivity : AppCompatActivity() {
         binding.buttonLeaveGame.visibility = View.VISIBLE
 
         Log.d("GameActivity", "Updated advance button: text=$buttonText, visible=${binding.buttonAdvancePhase.visibility == View.VISIBLE}")
+    }
+
+    private fun updateButtonVisibility() {
+        // Hide the button completely if game is over
+        if (currentState == GameState.GAME_OVER) {
+            Log.d("GameActivity", "Game is over, hiding advance button")
+            binding.buttonAdvancePhase.visibility = View.GONE
+        } else {
+            // For all other states, show the button if the player is the host
+            binding.buttonAdvancePhase.visibility = if (isHost) View.VISIBLE else View.GONE
+
+            // Enable button except for result states where we have automatic timers
+            if (isHost &&
+                currentState != GameState.NIGHT_RESULTS &&
+                currentState != GameState.EXECUTION_RESULT) {
+                binding.buttonAdvancePhase.isEnabled = true
+            }
+        }
+
+        // Always show the leave game button
+        binding.buttonLeaveGame.visibility = View.VISIBLE
+
+        Log.d("GameActivity", "Updated advance button: visible=${binding.buttonAdvancePhase.visibility == View.VISIBLE}")
     }
 
     /**
