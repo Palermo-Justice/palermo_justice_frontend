@@ -1,6 +1,7 @@
 package com.example.palermojustice.view.fragments
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -207,6 +208,11 @@ class DayPhaseFragment : Fragment() {
     }
 
     private fun updateVotesDisplay(votes: Map<String, String>) {
+        // Early return if fragment is not attached
+        if (!isAdded || _binding == null) {
+            return
+        }
+
         // Count how many people have voted
         val voteCount = votes.size
 
@@ -254,11 +260,38 @@ class DayPhaseFragment : Fragment() {
         )
     }
 
+    /**
+     * Cleanup any listeners when the fragment is destroyed
+     */
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
 
         // Remove Firebase listeners
         gameListener?.let { FirebaseManager.removeGameListener(gameId, it) }
+
+        // Also remove the votes listener if it exists
+        val votingController = GameController.getInstance(gameId).let {
+            try {
+                val field = it.javaClass.getDeclaredField("votingController")
+                field.isAccessible = true
+                field.get(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        // Clean up votes listener if possible
+        try {
+            if (votingController != null) {
+                val cleanupMethod = votingController.javaClass.getDeclaredMethod("cleanup")
+                cleanupMethod.isAccessible = true
+                cleanupMethod.invoke(votingController)
+            }
+        } catch (e: Exception) {
+            // Safely ignore if cleanup fails
+            Log.e("DayPhaseFragment", "Error cleaning up voting listeners: ${e.message}")
+        }
+
+        _binding = null
     }
 }
