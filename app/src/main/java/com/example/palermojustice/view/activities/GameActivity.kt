@@ -329,11 +329,6 @@ class GameActivity : AppCompatActivity() {
                     notificationHelper.notifyPlayerEliminated(gameId, result.eliminatedPlayerName ?: "A player")
                 }
 
-                // Show personal results for certain roles
-                if (currentPlayer?.role == Role.ISPETTORE.name &&
-                    result.investigatedPlayerId == playerId) {
-                    showPersonalResultDialog(result.getPrivateDescription(Role.ISPETTORE.name, playerId))
-                }
             }
             GameState.EXECUTION_RESULT -> {
                 if (result.eliminatedPlayerId != null) {
