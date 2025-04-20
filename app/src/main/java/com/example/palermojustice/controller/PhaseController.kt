@@ -509,10 +509,16 @@ class PhaseController(private val gameId: String) {
                             onFailure(exception)
                         }
                 } else {
-                    // Game continues, update status to night
-                    gameRef.child("status").setValue("night")
+                    // Game continues, update status to night AND increment the phase number
+                    val nextPhaseNumber = result.phaseNumber + 1
+
+                    val updates = HashMap<String, Any>()
+                    updates["status"] = "night"
+                    updates["currentPhase"] = nextPhaseNumber
+
+                    gameRef.updateChildren(updates)
                         .addOnSuccessListener {
-                            Log.d("PhaseController", "Execution result saved, status updated to night")
+                            Log.d("PhaseController", "Execution result saved, status updated to night, phase incremented to $nextPhaseNumber")
                             onSuccess()
                         }
                         .addOnFailureListener { exception ->
