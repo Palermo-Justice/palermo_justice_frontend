@@ -168,6 +168,11 @@ class GameController private constructor(private val gameId: String) {
                 "investigation=${investigationResult != null}, " +
                 "investigatedPlayer=$investigatedPlayerId, winningTeam=$winningTeam")
 
+        // If this is night results and investigation data exists, ensure it's properly logged
+        if (state == GameState.NIGHT_RESULTS && investigationResult != null && investigatedPlayerId != null) {
+            Log.d("GameController", "Investigation result found: target=$investigatedPlayerId, result=$investigationResult")
+        }
+
         return GameResult(
             phaseNumber = currentPhaseNumber,
             state = state,

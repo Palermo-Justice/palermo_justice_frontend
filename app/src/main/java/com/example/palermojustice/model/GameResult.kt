@@ -73,9 +73,9 @@ data class GameResult(
      */
     fun getPrivateDescription(playerRole: String, playerId: String): String {
         // Ispettore gets investigation results
-        if (playerRole == Role.ISPETTORE.name && investigationResult != null && investigatedPlayerId == playerId) {
-            val result = if (investigationResult) "is part of the Mafia" else "is not part of the Mafia"
-            return "Your investigation reveals that this player $result."
+        // TODO: remove this method.
+        if (playerRole == Role.ISPETTORE.name && investigationResult != null) {
+            return "You performed an investigation this night. Check the results section for details."
         }
 
         // No special info for other roles

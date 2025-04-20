@@ -250,6 +250,9 @@ class PhaseController(private val gameId: String) {
             // Note: We don't reveal the result in the public summary
 
             Log.d("PhaseController", "Investigation result: Player ${investigation.targetPlayerId} is Mafia: $investigationResult")
+
+            // Log additional details to ensure data is properly passed
+            Log.d("PhaseController", "Inspector ID: $inspectorId, Target ID: $investigatedPlayerId")
         }
 
         // Check if game is over (all mafia dead or mafia >= citizens)
