@@ -4,7 +4,7 @@ import android.util.Log
 import com.example.palermojustice.firebase.FirebaseManager
 import com.example.palermojustice.model.*
 import com.example.palermojustice.utils.Constants
-import com.example.palermojustice.utils.GameRules
+import com.example.palermojustice.utils.RoleAssignmentManager
 import com.example.palermojustice.model.RoleAction
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -212,7 +212,7 @@ class GameController private constructor(private val gameId: String) {
                 }
 
                 // Roles
-                val roleAssignments = GameRules.assignRoles(players)
+                val roleAssignments = RoleAssignmentManager.assignRoles(players)
 
                 val updates = mutableMapOf<String, Any>()
                 updates["status"] = "night"
