@@ -87,18 +87,6 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
-    /**
-     * Notifications for specific game events
-     */
-    fun notifyGameStarted(gameId: String) {
-        sendGameNotification(
-            gameId,
-            "Game Started",
-            "The Mafia game has begun! Check your role.",
-            GameState.ROLE_ASSIGNMENT
-        )
-    }
-
     fun notifyYourTurn(gameId: String, gameState: GameState) {
         val title = when (gameState) {
             GameState.NIGHT -> "Night Phase"
