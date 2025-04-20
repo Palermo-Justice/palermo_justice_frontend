@@ -68,17 +68,4 @@ enum class Role(
 enum class Team {
     MAFIA,
     CITIZENS;
-
-    /**
-     * Returns true if this team has won the game based on the alive players
-     */
-    fun hasWon(players: List<Player>): Boolean {
-        val aliveMafia = players.count { it.role == Role.MAFIOSO.name && it.isAlive }
-        val aliveCitizens = players.count { it.role != Role.MAFIOSO.name && it.isAlive }
-
-        return when (this) {
-            MAFIA -> aliveMafia >= aliveCitizens
-            CITIZENS -> aliveMafia == 0
-        }
-    }
 }
