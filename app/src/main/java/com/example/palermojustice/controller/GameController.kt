@@ -454,7 +454,7 @@ class GameController private constructor(private val gameId: String) {
     /**
      * Check if the game is over (if either team has won)
      */
-    fun checkGameOver(): Team? {
+    fun checkGameOver(): Team? { // TODO: remove method
         val players = currentGame?.players?.values?.toList() ?: return null
 
         Log.d("GameController", "Checking if game is over with ${players.size} players")
@@ -479,7 +479,7 @@ class GameController private constructor(private val gameId: String) {
     /**
      * End the game with specified winning team
      */
-    fun endGame(
+    fun endGame( // TODO: remove method
         winningTeam: Team,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit

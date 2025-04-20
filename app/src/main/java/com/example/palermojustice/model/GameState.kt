@@ -56,18 +56,4 @@ enum class GameState(val displayName: String) {
             else -> false // Other phases don't require player action
         }
     }
-
-    /**
-     * Returns true if this is a waiting state (results, discussion)
-     */
-    fun isWaitingState(): Boolean {
-        return this == NIGHT_RESULTS || this == DAY_DISCUSSION || this == EXECUTION_RESULT
-    }
-
-    /**
-     * Returns true if this is a results state where info should be displayed
-     */
-    fun isResultsState(): Boolean {
-        return this == NIGHT_RESULTS || this == EXECUTION_RESULT || this == GAME_OVER
-    }
 }

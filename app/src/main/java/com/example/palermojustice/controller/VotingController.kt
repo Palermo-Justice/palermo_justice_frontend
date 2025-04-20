@@ -113,7 +113,7 @@ class VotingController(private val gameId: String) {
     /**
      * Check if all alive players have voted
      */
-    fun checkAllVoted(
+    fun checkAllVoted( // TODO: maybe remove
         phaseNumber: Int,
         callback: (Boolean, Int, Int) -> Unit
     ) {
@@ -143,7 +143,7 @@ class VotingController(private val gameId: String) {
     /**
      * Listen for vote changes in real-time
      */
-    fun listenForVotes(
+    fun listenForVotes( // TODO: maybe remove
         phaseNumber: Int,
         onVotesChanged: (Map<String, String>) -> Unit
     ) {

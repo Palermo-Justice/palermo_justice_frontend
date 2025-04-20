@@ -29,6 +29,7 @@ object Constants {
     const val RESULT_DISPLAY_TIME = 10_000L // 10 seconds
 
     // Firebase paths
+    // TODO: maybe remove
     const val GAMES_PATH = "games"
     const val PLAYERS_PATH = "players"
     const val ACTIONS_PATH = "actions"
