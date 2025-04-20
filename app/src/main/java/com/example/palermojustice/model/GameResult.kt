@@ -68,20 +68,6 @@ data class GameResult(
         }
     }
 
-    /**
-     * Get private information for specific roles
-     */
-    fun getPrivateDescription(playerRole: String, playerId: String): String {
-        // Ispettore gets investigation results
-        // TODO: remove this method.
-        if (playerRole == Role.ISPETTORE.name && investigationResult != null) {
-            return "You performed an investigation this night. Check the results section for details."
-        }
-
-        // No special info for other roles
-        return ""
-    }
-
     companion object {
         /**
          * Create GameResult from Firebase data
