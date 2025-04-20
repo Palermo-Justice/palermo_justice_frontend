@@ -14,6 +14,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.FirebaseDatabase
 import android.graphics.Typeface
+import com.example.palermojustice.view.activities.GameActivity
 
 /**
  * Fragment for displaying game phase results.
@@ -250,7 +251,6 @@ class ResultsFragment : Fragment() {
      * Fixed to properly check if THIS player performed the investigation
      */
     private fun checkPrivateResultsDirectly(result: GameResult) {
-
         // Exit early if view is detached
         if (!isAdded || _binding == null) {
             return
@@ -268,7 +268,7 @@ class ResultsFragment : Fragment() {
 
             Log.d("ResultsFragment", "Checking private results for player $playerId with role $role")
 
-            // For detective - show investigation results if they performed the investigation
+            // For Ispettore - show investigation results if they performed the investigation
             if (role == Role.ISPETTORE.name) {
                 // Check if this player performed the investigation
                 val actionsRef = database.getReference("games")
@@ -306,6 +306,11 @@ class ResultsFragment : Fragment() {
                                     Log.d("ResultsFragment", "Found investigation result: $resultText")
                                     binding.textViewPrivateResult.text = resultText
                                     binding.privateResultSection.visibility = View.VISIBLE
+
+                                    // Notify the activity to show a dialog with this information
+                                    if (activity is GameActivity) {
+                                        (activity as GameActivity).showPersonalResultDialog(resultText)
+                                    }
                                 }
                         }
                     } else {

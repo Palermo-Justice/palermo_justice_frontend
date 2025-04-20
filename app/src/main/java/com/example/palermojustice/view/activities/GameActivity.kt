@@ -490,15 +490,37 @@ class GameActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showPersonalResultDialog(message: String) {
+    fun showPersonalResultDialog(message: String) {
         if (message.isNotEmpty()) {
-            AlertDialog.Builder(this)
-                .setTitle("Personal Information")
+            // Use a styled dialog to make investigation results more impactful
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Investigation Results")
                 .setMessage(message)
-                .setPositiveButton("OK") { dialog, _ ->
+                .setIcon(android.R.drawable.ic_menu_info_details)
+                .setCancelable(false) // Force user to acknowledge
+                .setPositiveButton("Understood") { dialog, _ ->
                     dialog.dismiss()
                 }
-                .show()
+
+            // Create and show the dialog
+            val dialog = builder.create()
+            dialog.show()
+
+            // Optional: Style the message text for better emphasis
+            try {
+                val textView = dialog.findViewById<android.widget.TextView>(android.R.id.message)
+                textView?.let {
+                    it.textSize = 16f
+
+                    // If the result indicates the target is Mafia, highlight it in red
+                    if (message.contains("IS part of the Mafia")) {
+                        it.setTextColor(android.graphics.Color.RED)
+                    }
+                }
+            } catch (e: Exception) {
+                // Fallback if styling fails
+                Log.e("GameActivity", "Failed to style dialog: ${e.message}")
+            }
         }
     }
 
