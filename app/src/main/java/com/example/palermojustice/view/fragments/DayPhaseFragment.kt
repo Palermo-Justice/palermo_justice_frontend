@@ -116,8 +116,9 @@ class DayPhaseFragment : Fragment() {
 
             // Disable voting if player cannot vote
             if (!canVote) {
-                binding.buttonVote.isEnabled = false
-                binding.buttonVote.text = "You cannot vote"
+                // Hide voting UI elements for dead players
+                binding.buttonVote.visibility = View.GONE
+                binding.recyclerViewPlayers.visibility = View.GONE
                 binding.textViewVotingInstructions.text =
                     "You are dead and cannot vote. Watch how the living decide."
             }
@@ -141,7 +142,7 @@ class DayPhaseFragment : Fragment() {
             gameId = gameId,
             onUpdate = { game ->
                 // Update player list for voting
-                if (isVotingPhase) {
+                if (isVotingPhase && canVote) {  // Only update player list if can vote
                     val votablePlayers = game.players.values.filter {
                         it.id != playerId && it.isAlive
                     }
@@ -158,7 +159,7 @@ class DayPhaseFragment : Fragment() {
                     }
                 }
 
-                // Update player status text
+                // Update player status text - always show this information regardless of alive status
                 val alivePlayers = game.players.values.count { it.isAlive }
                 val totalPlayers = game.players.size
                 binding.textViewPlayerCount.text = "Players: $alivePlayers alive / $totalPlayers total"

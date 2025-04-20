@@ -222,7 +222,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Game over message"
+                    android:text=""
                     android:textSize="16sp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
