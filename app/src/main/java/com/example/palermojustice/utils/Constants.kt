@@ -22,6 +22,7 @@ object Constants {
     )
 
     // Phase timing (in milliseconds)
+    // TODO: remove, because events are manually triggerd
     const val DAY_DISCUSSION_TIME = 120_000L // 2 minutes
     const val DAY_VOTING_TIME = 60_000L // 1 minute
     const val NIGHT_ACTION_TIME = 60_000L // 1 minute
