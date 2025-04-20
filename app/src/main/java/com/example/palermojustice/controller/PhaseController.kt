@@ -509,14 +509,14 @@ class PhaseController(private val gameId: String) {
                             onFailure(exception)
                         }
                 } else {
-                    // Game continues, update status to day
-                    gameRef.child("status").setValue("day")
+                    // Game continues, update status to night
+                    gameRef.child("status").setValue("night")
                         .addOnSuccessListener {
-                            Log.d("PhaseController", "Execution result saved, status updated to day")
+                            Log.d("PhaseController", "Execution result saved, status updated to night")
                             onSuccess()
                         }
                         .addOnFailureListener { exception ->
-                            Log.e("PhaseController", "Failed to update status to day: ${exception.message}")
+                            Log.e("PhaseController", "Failed to update status to night: ${exception.message}")
                             onFailure(exception)
                         }
                 }

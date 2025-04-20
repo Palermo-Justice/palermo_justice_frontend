@@ -235,6 +235,8 @@ class GameActivity : AppCompatActivity() {
             } // Other states handled elsewhere
         }
 
+        // Always update button text when state changes
+        updateButtonText()
         updateButtonVisibility()
     }
 
