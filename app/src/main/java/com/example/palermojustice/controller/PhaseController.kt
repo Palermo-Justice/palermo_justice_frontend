@@ -264,7 +264,7 @@ class PhaseController(private val gameId: String) {
 
         val winningTeam = when {
             aliveMafia == 0 -> Team.CITIZENS
-            aliveMafia >= aliveCitizens -> Team.MAFIA
+            aliveCitizens == 1 -> Team.MAFIA
             else -> null
         }
 
