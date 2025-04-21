@@ -34,6 +34,8 @@
             android:exported="false" />
         <activity android:name=".view.activities.RoleActionActivity"
             android:exported="false" />
+        <activity android:name=".view.activities.TutorialActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
