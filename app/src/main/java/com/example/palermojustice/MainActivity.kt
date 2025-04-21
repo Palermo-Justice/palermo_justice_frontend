@@ -6,6 +6,7 @@ import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.example.palermojustice.view.activities.CreateGameActivity
 import com.example.palermojustice.view.activities.TutorialActivity
+import com.example.palermojustice.view.activities.SettingsActivity
 import com.example.palermojustice.view.activities.JoinGameActivity
 
 class MainActivity : AppCompatActivity() {
@@ -23,10 +24,16 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, JoinGameActivity::class.java))
         }
 
-        // MainActivity.kt
+        // Tutorial
         findViewById<Button>(R.id.buttonTutorial).setOnClickListener {
             startActivity(Intent(this, TutorialActivity::class.java))
         }
+
+        // Settings
+        findViewById<Button>(R.id.buttonSettings).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
 
     }
 }

@@ -36,6 +36,9 @@
             android:exported="false" />
         <activity android:name=".view.activities.TutorialActivity"
             android:exported="false" />
+        <activity android:name=".view.activities.SettingsActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>
