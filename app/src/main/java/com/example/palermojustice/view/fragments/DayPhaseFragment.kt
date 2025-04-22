@@ -11,8 +11,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.palermojustice.controller.GameController
 import com.example.palermojustice.databinding.FragmentDayPhaseBinding
 import com.example.palermojustice.firebase.FirebaseManager
-import com.example.palermojustice.model.ActionType
-import com.example.palermojustice.model.Player
 import com.example.palermojustice.view.adapters.VotingAdapter
 import com.google.firebase.database.ValueEventListener
 
@@ -33,7 +31,6 @@ class DayPhaseFragment : Fragment() {
     private var canVote: Boolean = false
     private var selectedTargetId: String? = null
     private var gameListener: ValueEventListener? = null
-    private var votesListener: ValueEventListener? = null
 
     companion object {
         fun newInstance(

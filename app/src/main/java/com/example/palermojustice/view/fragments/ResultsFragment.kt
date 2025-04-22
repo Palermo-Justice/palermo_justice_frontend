@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import com.example.palermojustice.databinding.FragmentResultsBinding
-import com.example.palermojustice.firebase.FirebaseManager
 import com.example.palermojustice.model.*
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -27,7 +26,6 @@ class ResultsFragment : Fragment() {
     private var gameId: String = ""
     private var playerId: String = ""
     private var resultType: GameState = GameState.NIGHT_RESULTS
-    private var gameListener: ValueEventListener? = null
 
     companion object {
         fun newInstance(

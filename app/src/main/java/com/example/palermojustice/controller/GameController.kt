@@ -1,14 +1,12 @@
 package com.example.palermojustice.controller
 
 import android.util.Log
-import com.example.palermojustice.firebase.FirebaseManager
 import com.example.palermojustice.model.*
 import com.example.palermojustice.utils.Constants
 import com.example.palermojustice.utils.RoleAssignmentManager
 import com.example.palermojustice.model.RoleAction
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
@@ -449,57 +447,6 @@ class GameController private constructor(private val gameId: String) {
                     }
             }
         }
-    }
-
-    /**
-     * Check if the game is over (if either team has won)
-     */
-    fun checkGameOver(): Team? { // TODO: remove method
-        val players = currentGame?.players?.values?.toList() ?: return null
-
-        Log.d("GameController", "Checking if game is over with ${players.size} players")
-
-        // Check if Mafia has won (equal or more than citizens)
-        val aliveMafia = players.count {
-            it.role == Role.MAFIOSO.name && it.isAlive
-        }
-        val aliveCitizens = players.count {
-            it.role != Role.MAFIOSO.name && it.isAlive
-        }
-
-        Log.d("GameController", "Game status: $aliveMafia mafia alive, $aliveCitizens citizens alive")
-
-        return when {
-            aliveMafia == 0 -> Team.CITIZENS // All mafia dead, citizens win
-            aliveMafia >= aliveCitizens -> Team.MAFIA // Mafia equals or outnumbers citizens
-            else -> null // Game continues
-        }
-    }
-
-    /**
-     * End the game with specified winning team
-     */
-    fun endGame( // TODO: remove method
-        winningTeam: Team,
-        onSuccess: () -> Unit,
-        onFailure: (Exception) -> Unit
-    ) {
-        Log.d("GameController", "Ending game with winning team: $winningTeam")
-
-        val updates = mutableMapOf<String, Any>()
-        updates["status"] = "finished"
-        updates["winningTeam"] = winningTeam.name
-
-        gameRef.updateChildren(updates)
-            .addOnSuccessListener {
-                Log.d("GameController", "Game ended successfully")
-                currentState = GameState.GAME_OVER
-                onSuccess()
-            }
-            .addOnFailureListener { exception ->
-                Log.e("GameController", "Failed to end game: ${exception.message}")
-                onFailure(exception)
-            }
     }
 
     /**

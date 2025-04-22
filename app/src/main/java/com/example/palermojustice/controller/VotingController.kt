@@ -3,8 +3,6 @@ package com.example.palermojustice.controller
 import android.util.Log
 import com.example.palermojustice.model.ActionType
 import com.example.palermojustice.model.RoleAction
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
@@ -108,67 +106,6 @@ class VotingController(private val gameId: String) {
             Log.e("VotingController", "Error tallying votes: ${exception.message}")
             callback(emptyMap(), null)
         }
-    }
-
-    /**
-     * Check if all alive players have voted
-     */
-    fun checkAllVoted( // TODO: maybe remove
-        phaseNumber: Int,
-        callback: (Boolean, Int, Int) -> Unit
-    ) {
-        // Get all alive players
-        gameRef.child("players").get().addOnSuccessListener { playersSnapshot ->
-            // Count alive players
-            var alivePlayers = 0
-            playersSnapshot.children.forEach { playerSnapshot ->
-                val isAlive = playerSnapshot.child("isAlive").getValue(Boolean::class.java) ?: true
-                if (isAlive) {
-                    alivePlayers++
-                }
-            }
-
-            // Count votes
-            votesRef.child(phaseNumber.toString()).get().addOnSuccessListener { votesSnapshot ->
-                val voteCount = votesSnapshot.childrenCount.toInt()
-                callback(voteCount >= alivePlayers, voteCount, alivePlayers)
-            }.addOnFailureListener {
-                callback(false, 0, alivePlayers)
-            }
-        }.addOnFailureListener {
-            callback(false, 0, 0)
-        }
-    }
-
-    /**
-     * Listen for vote changes in real-time
-     */
-    fun listenForVotes( // TODO: maybe remove
-        phaseNumber: Int,
-        onVotesChanged: (Map<String, String>) -> Unit
-    ) {
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val votes = mutableMapOf<String, String>()
-
-                if (snapshot.exists()) {
-                    for (voteSnapshot in snapshot.children) {
-                        val voterId = voteSnapshot.key ?: continue
-                        val targetId = voteSnapshot.child("targetPlayerId").getValue(String::class.java) ?: continue
-                        votes[voterId] = targetId
-                    }
-                }
-
-                onVotesChanged(votes)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                // Handle error
-            }
-        }
-
-        votesRef.child(phaseNumber.toString()).addValueEventListener(listener)
-        listeners.add(listener)
     }
 
     /**
