@@ -102,3 +102,25 @@ The project mainly follows a Model-View-Controller (MVC) architecture:
 1. Connect an Android device or use an emulator
 2. Run the app using `Run > Run 'app'`
 3. The app should install and launch automatically
+
+## Setup Bot Script
+### Starting the Server
+
+To run the multiplayer script locally, follow these steps:
+
+#### Prerequisites
+- Python 3.7 or higher
+- `pip` (Python package installer)
+
+#### Installation
+
+1. Navigate to the project root directory.
+2. (Optional but recommended) Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+3. pip install -r requirements.txt
+
+### Running the Server
+Start the server with:
+`python mutliplayer.py`
