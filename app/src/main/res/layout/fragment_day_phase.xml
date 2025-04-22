@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:backgroundTint="#F44336"
     tools:context=".view.fragments.DayPhaseFragment">
 
     <TextView
@@ -42,6 +43,8 @@
         app:layout_constraintTop_toBottomOf="@+id/textViewDayPhaseDescription" />
 
     <!-- Discussion Phase UI -->
+
+    <!-- Voting Phase UI -->
     <LinearLayout
         android:id="@+id/discussionSection"
         android:layout_width="0dp"
@@ -54,16 +57,18 @@
         android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textViewPlayerCount">
+        app:layout_constraintTop_toBottomOf="@+id/textViewPlayerCount"
+        app:layout_constraintVertical_bias="0.0">
 
         <ImageView
             android:id="@+id/imageViewDayTime"
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:layout_marginBottom="16dp"
-            android:src="@android:drawable/ic_menu_day"
-            android:contentDescription="Day phase icon" />
+            android:contentDescription="Day phase icon"
+            android:src="@android:drawable/ic_menu_day" />
 
         <TextView
             android:id="@+id/textViewDiscussionInstructions"
@@ -75,7 +80,6 @@
 
     </LinearLayout>
 
-    <!-- Voting Phase UI -->
     <LinearLayout
         android:id="@+id/votingSection"
         android:layout_width="0dp"
@@ -123,8 +127,9 @@
         <Button
             android:id="@+id/buttonVote"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginTop="8dp"
+            android:backgroundTint="#F44336"
             android:enabled="false"
             android:text="Submit Vote" />
     </LinearLayout>
