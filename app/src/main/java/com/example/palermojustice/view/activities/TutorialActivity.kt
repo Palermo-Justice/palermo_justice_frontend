@@ -13,7 +13,5 @@ class TutorialActivity : AppCompatActivity() {
         binding = ActivityTutorialBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.buttonBack.setOnClickListener { finish() }
-
     }
 }
