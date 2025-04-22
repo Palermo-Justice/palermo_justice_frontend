@@ -23,7 +23,6 @@ app:cardElevation="6dp"
 app:cardUseCompatPadding="true"
 app:cardBackgroundColor="@color/white_translucent"
 app:layout_constraintTop_toTopOf="parent"
-app:layout_constraintBottom_toTopOf="@+id/buttonBack"
 app:layout_constraintStart_toStartOf="parent"
 app:layout_constraintEnd_toEndOf="parent">
 
