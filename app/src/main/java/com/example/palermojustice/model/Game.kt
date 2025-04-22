@@ -7,7 +7,8 @@ data class Game(
     val hostId: String = "",
     val gameCode: String = "",
     val status: String = "lobby", // lobby, day, night, finished
-    val players: Map<String, Player> = mapOf()
+    val players: Map<String, Player> = mapOf(),
+    val virtualPlayersEnabled: Boolean = false
 ) {
     companion object {
         // Create Game object from Firebase Realtime Database snapshot
@@ -15,6 +16,7 @@ data class Game(
             val hostId = snapshot.child("hostId").getValue(String::class.java) ?: ""
             val gameCode = snapshot.child("gameCode").getValue(String::class.java) ?: ""
             val status = snapshot.child("status").getValue(String::class.java) ?: "lobby"
+            val virtualPlayersEnabled = snapshot.child("virtualPlayersEnabled").getValue(Boolean::class.java) ?: false
 
             val players = mutableMapOf<String, Player>()
             val playersSnapshot = snapshot.child("players")
@@ -38,7 +40,8 @@ data class Game(
                 hostId = hostId,
                 gameCode = gameCode,
                 status = status,
-                players = players
+                players = players,
+                virtualPlayersEnabled = virtualPlayersEnabled
             )
         }
     }

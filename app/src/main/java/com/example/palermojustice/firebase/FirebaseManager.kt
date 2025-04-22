@@ -39,6 +39,7 @@ object FirebaseManager {
         game["gameCode"] = gameCode
         game["status"] = "lobby"
         game["createdAt"] = ServerValue.TIMESTAMP
+        game["virtualPlayersEnabled"] = false  // Default value for virtual players flag
 
         // Add the host as the first player
         val players = HashMap<String, Any>()
@@ -159,6 +160,26 @@ object FirebaseManager {
                 onFailure(Exception(error.message))
             }
         })
+    }
+
+    // Toggle virtual players mode
+    fun toggleVirtualPlayers(gameId: String, enabled: Boolean, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
+        gamesRef.child(gameId).child("virtualPlayersEnabled").setValue(enabled)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    // Check if virtual players are enabled
+    fun checkVirtualPlayersEnabled(gameId: String, callback: (Boolean) -> Unit) {
+        gamesRef.child(gameId).child("virtualPlayersEnabled").get()
+            .addOnSuccessListener { snapshot ->
+                val enabled = snapshot.getValue(Boolean::class.java) ?: false
+                callback(enabled)
+            }
+            .addOnFailureListener {
+                // Default to false if there's an error
+                callback(false)
+            }
     }
 
     // Stop listening to a game

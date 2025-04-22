@@ -13,6 +13,7 @@ import com.example.palermojustice.view.adapters.PlayerAdapter
 import com.google.firebase.database.ValueEventListener
 import com.example.palermojustice.controller.GameController
 import android.util.Log
+import com.google.firebase.database.FirebaseDatabase
 
 class LobbyActivity : AppCompatActivity() {
 
@@ -21,6 +22,7 @@ class LobbyActivity : AppCompatActivity() {
     private lateinit var playerId: String
     private var isHost = false
     private var gameListener: ValueEventListener? = null
+    private var virtualPlayersEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,8 +51,10 @@ class LobbyActivity : AppCompatActivity() {
         // Setup RecyclerView for players list
         binding.recyclerViewPlayers.layoutManager = LinearLayoutManager(this)
 
-        // Show/hide start game button based on host status
+        // Show/hide host controls based on host status
         binding.buttonStartGame.visibility = if (isHost) View.VISIBLE else View.GONE
+        binding.switchVirtualPlayers.visibility = if (isHost) View.VISIBLE else View.GONE
+        binding.textVirtualPlayersLabel.visibility = if (isHost) View.VISIBLE else View.GONE
 
         // Show game code
         binding.textViewGameCode.text = "Game Code: Loading..."
@@ -78,6 +82,37 @@ class LobbyActivity : AppCompatActivity() {
         binding.buttonLeaveGame.setOnClickListener {
             leaveGame()
         }
+
+        // Virtual players switch
+        binding.switchVirtualPlayers.setOnCheckedChangeListener { _, isChecked ->
+            if (isHost) {
+                toggleVirtualPlayers(isChecked)
+            }
+        }
+    }
+
+    private fun toggleVirtualPlayers(enabled: Boolean) {
+        if (!isHost) {
+            return
+        }
+
+        virtualPlayersEnabled = enabled
+
+        // Update the value in Firebase
+        val database = FirebaseDatabase.getInstance()
+        val gameRef = database.getReference("games").child(gameId)
+
+        gameRef.child("virtualPlayersEnabled").setValue(enabled)
+            .addOnSuccessListener {
+                Log.d("LobbyActivity", "Virtual players flag set to $enabled")
+                Toast.makeText(this, "Virtual players ${if (enabled) "enabled" else "disabled"}", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { exception ->
+                Log.e("LobbyActivity", "Failed to update virtual players setting", exception)
+                Toast.makeText(this, "Failed to update virtual players setting", Toast.LENGTH_SHORT).show()
+                // Reset switch to previous state if update fails
+                binding.switchVirtualPlayers.isChecked = !enabled
+            }
     }
 
     private fun listenToGameUpdates() {
@@ -100,6 +135,21 @@ class LobbyActivity : AppCompatActivity() {
                 // Update host status
                 isHost = (game.hostId == playerId)
                 binding.buttonStartGame.visibility = if (isHost) View.VISIBLE else View.GONE
+                binding.switchVirtualPlayers.visibility = if (isHost) View.VISIBLE else View.GONE
+                binding.textVirtualPlayersLabel.visibility = if (isHost) View.VISIBLE else View.GONE
+
+                // Update virtual players switch state if we're the host
+                if (isHost) {
+                    val virtualPlayersEnabled = FirebaseDatabase.getInstance()
+                        .getReference("games")
+                        .child(gameId)
+                        .child("virtualPlayersEnabled")
+                        .get()
+                        .addOnSuccessListener { snapshot ->
+                            val enabled = snapshot.getValue(Boolean::class.java) ?: false
+                            binding.switchVirtualPlayers.isChecked = enabled
+                        }
+                }
 
                 // Check if game has started
                 if (game.status != "lobby") {
