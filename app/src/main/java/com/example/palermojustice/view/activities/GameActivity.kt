@@ -40,6 +40,7 @@ class GameActivity : AppCompatActivity() {
     private var currentState: GameState = GameState.LOBBY
     private var currentPlayer: Player? = null
     private var gameListener: ValueEventListener? = null
+    private var isGameOver: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,7 +112,12 @@ class GameActivity : AppCompatActivity() {
 
                 // Update host status
                 isHost = (game.hostId == playerId)
-                binding.buttonAdvancePhase.visibility = if (isHost) View.VISIBLE else View.GONE
+
+                // Check if game is finished
+                isGameOver = game.status == "finished"
+
+                // Update button visibility
+                updateButtonVisibility()
 
                 // Update game status information
                 updateGameStatusInfo(game.status)
@@ -138,8 +144,10 @@ class GameActivity : AppCompatActivity() {
         val statusText = when (status) {
             "lobby" -> "Waiting in Lobby"
             "night" -> "Night Phase"
+            "night_results" -> "Night Results"
             "day" -> "Day Discussion"
             "voting" -> "Voting Phase"
+            "execution_results" -> "Execution Results"
             "finished" -> "Game Over"
             else -> "Unknown"
         }
@@ -182,6 +190,11 @@ class GameActivity : AppCompatActivity() {
         }
 
         currentState = newState
+
+        // If game is over, set the flag
+        if (newState == GameState.GAME_OVER) {
+            isGameOver = true
+        }
 
         // Notify about phase change
         if (isHost || currentPlayer?.isAlive == true) {
@@ -257,7 +270,7 @@ class GameActivity : AppCompatActivity() {
 
     private fun updateButtonVisibility() {
         // Hide the button completely if game is over
-        if (currentState == GameState.GAME_OVER) {
+        if (currentState == GameState.GAME_OVER || isGameOver) {
             Log.d("GameActivity", "Game is over, hiding advance button")
             binding.buttonAdvancePhase.visibility = View.GONE
         } else {
@@ -291,7 +304,6 @@ class GameActivity : AppCompatActivity() {
                     // Show elimination notification
                     notificationHelper.notifyPlayerEliminated(gameId, result.eliminatedPlayerName ?: "A player")
                 }
-
             }
             GameState.EXECUTION_RESULT -> {
                 if (result.eliminatedPlayerId != null) {
@@ -309,6 +321,9 @@ class GameActivity : AppCompatActivity() {
                         currentState = GameState.GAME_OVER
                         showGameOverScreen()
                     }
+
+                    // Set the game over flag
+                    isGameOver = true
 
                     // Hide the advance button
                     binding.buttonAdvancePhase.visibility = View.GONE
@@ -386,6 +401,9 @@ class GameActivity : AppCompatActivity() {
             .replace(R.id.fragmentContainer, fragment)
             .commit()
 
+        // Set the game over flag
+        isGameOver = true
+
         // Hide advance button and ensure leave button is visible
         binding.buttonAdvancePhase.visibility = View.GONE
         binding.buttonLeaveGame.visibility = View.VISIBLE
@@ -405,6 +423,12 @@ class GameActivity : AppCompatActivity() {
     private fun advanceGamePhase() {
         if (!isHost) {
             Toast.makeText(this, "Only the host can advance the game phase", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Don't advance phase if game is over
+        if (isGameOver) {
+            Toast.makeText(this, "The game is over!", Toast.LENGTH_SHORT).show()
             return
         }
 

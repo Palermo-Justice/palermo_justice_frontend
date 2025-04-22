@@ -264,7 +264,7 @@ class PhaseController(private val gameId: String) {
 
         val winningTeam = when {
             aliveMafia == 0 -> Team.CITIZENS
-            aliveCitizens == 1 -> Team.MAFIA
+            aliveMafia >= aliveCitizens -> Team.MAFIA
             else -> null
         }
 
@@ -303,10 +303,10 @@ class PhaseController(private val gameId: String) {
      * Save night phase results to database
      */
     private fun saveNightResults(
-    phaseNumber: Int,
-    result: GameResult,
-    onSuccess: () -> Unit,
-    onFailure: (Exception) -> Unit
+        phaseNumber: Int,
+        result: GameResult,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
     ) {
         val resultWithPhase = result.copy(phaseNumber = phaseNumber)
 
