@@ -67,7 +67,7 @@ The project mainly follows a Model-View-Controller (MVC) architecture:
 7. **Execution Result**: Result of the vote is revealed
 8. **Repeat** steps 3-7 until one team wins
 
-## Setup and Installation
+## Setup and Installation - Android APP
 
 ### Prerequisites
 - Android Studio
