@@ -9,7 +9,7 @@ Palermo Justice is a mobile app similar to "Mafia" or "Werewolf," where players 
 - **Paesano**: Regular citizen trying to survive and vote during the day
 - **Ispettore**: Can investigate one player each night to determine if they are Mafia
 - **Sgarrista**: Can protect one player each night from elimination
-- **Il Prete**: Can bless a player and protect them from elimination
+- **Il Prete**: Can bless a player and protect them from elimination (currently not active)
 
 ## Project Structure
 
