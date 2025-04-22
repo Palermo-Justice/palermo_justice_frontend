@@ -20,26 +20,41 @@
         android:id="@+id/editTextPlayerName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="64dp"
         android:layout_marginTop="32dp"
+        android:layout_marginEnd="64dp"
         android:hint="Your Name"
         android:inputType="textPersonName"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textViewTitle" />
 
     <EditText
         android:id="@+id/editTextGameCode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="64dp"
         android:layout_marginTop="16dp"
+        android:layout_marginEnd="64dp"
         android:hint="Game Code"
         android:inputType="number"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/editTextPlayerName" />
 
     <Button
         android:id="@+id/buttonJoinGame"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="64dp"
         android:layout_marginTop="32dp"
+        android:layout_marginEnd="64dp"
+        android:backgroundTint="#F44336"
         android:text="Join Game"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/editTextGameCode" />
 
     <ProgressBar
