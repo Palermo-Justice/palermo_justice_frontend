@@ -11,67 +11,142 @@
     android:paddingTop="?attr/actionBarSize"
     android:fitsSystemWindows="true">
 
-    <!-- Tutorial tex -->
-<androidx.cardview.widget.CardView
-android:id="@+id/cardTutorial"
-android:layout_width="0dp"
-android:layout_height="wrap_content"
-android:layout_marginTop="16dp"
-android:layout_marginBottom="16dp"
-app:cardCornerRadius="12dp"
-app:cardElevation="6dp"
-app:cardUseCompatPadding="true"
-app:cardBackgroundColor="@color/white_translucent"
-app:layout_constraintTop_toTopOf="parent"
-app:layout_constraintStart_toStartOf="parent"
-app:layout_constraintEnd_toEndOf="parent">
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardTutorial"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardUseCompatPadding="true"
+        app:cardBackgroundColor="@color/white_translucent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-<ScrollView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:padding="20dp">
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="20dp">
 
-    <TextView
-        android:id="@+id/textTutorial"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textColor="@android:color/black"
-        android:lineSpacingExtra="4dp"
-        android:text=
-        "
-Palermo Justice — Quick Guide\n
-\n
-\u2022 OBJECTIVE\n
-  – Citizens must eliminate all Mafia.\n
-  – Mafia win once they equal / outnumber citizens.\n
-\n
-\u2022 ROLES\n
-  — Paesano – a regular citizen with no powers.\n
-  — Picciotto Mafioso – Mafia; picks a victim each night.\n
-  — Ispettore – detective; checks one player per night.\n
-  — Sgarrista – protector; shields one player per night.\n
-  — Il Prete – priest; may revive one eliminated player (once).\n
-  — Pentito – when killed, drags one other player with them.\n
-  — Truffatore – swaps the roles of two other players.\n
-\n
-\u2022 DAY PHASE\n
-  1 Discuss and accuse.\n
-  2 Vote; the top‑voted player is eliminated.\n
-\n
-\u2022 NIGHT PHASE\n
-  – Mafia pick a target.\n
-  – Ispettore investigates.\n
-  – Sgarrista protects.\n
-  – Il Prete / Pentito / Truffatore act when relevant.\n
-\n
-\u2022 VICTORY\n
-  Citizens: all Mafia dead.\n
-  Mafia: 50 % or more of the survivors.
-"
-        />
-</ScrollView>
-</androidx.cardview.widget.CardView>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
+                <!-- Title -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Palermo Justice — Quick Guide"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:paddingBottom="12dp"
+                    android:textColor="@android:color/black"/>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#CCC"
+                    android:layout_marginBottom="12dp"/>
+
+                <!-- Objective -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🎯 OBJECTIVE"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="• Citizens must eliminate all Mafia.\n• Mafia win if they equal or outnumber citizens."
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="12dp"/>
+
+                <!-- Roles -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🧑‍🤝‍🧑 ROLES"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="• Paesano – Regular citizen, no powers.\n• Picciotto Mafioso – Mafia; picks a victim each night.\n• Ispettore – Detective; investigates one player per night.\n• Sgarrista – Protector; shields one player per night."
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="12dp"/>
+
+                <!-- Day Phase -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="☀️ DAY PHASE"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="1. Discuss and accuse.\n2. Vote — the top-voted player is eliminated."
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="12dp"/>
+
+                <!-- Night Phase -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🌙 NIGHT PHASE"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="• Mafia choose a target.\n• Ispettore investigates.\n• Sgarrista protects."
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="12dp"/>
+
+                <!-- Victory -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🏆 VICTORY"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="• Citizens win when all Mafia are eliminated.\n• Mafia win when they are half or more of the remaining players."
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@android:color/black"
+                    android:paddingBottom="16dp"/>
+
+            </LinearLayout>
+        </ScrollView>
+    </androidx.cardview.widget.CardView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
