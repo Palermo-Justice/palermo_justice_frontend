@@ -111,6 +111,7 @@ To run the multiplayer script locally, follow these steps:
 #### Prerequisites
 - Python 3.7 or higher
 - `pip` (Python package installer)
+- serviceAccountKey.json (from FirebaseConsole)
 
 #### Installation
 
