@@ -6,7 +6,6 @@ import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.example.palermojustice.view.activities.CreateGameActivity
 import com.example.palermojustice.view.activities.TutorialActivity
-import com.example.palermojustice.view.activities.SettingsActivity
 import com.example.palermojustice.view.activities.JoinGameActivity
 
 class MainActivity : AppCompatActivity() {
