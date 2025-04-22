@@ -15,8 +15,6 @@ import com.example.palermojustice.model.Role
 import com.example.palermojustice.view.activities.RoleActionActivity
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 
 /**
  * Fragment for the night phase of the game.
@@ -220,39 +218,45 @@ class NightPhaseFragment : Fragment() {
             return
         }
 
-        // Check if player has already performed this action
+        // Check if player has already performed this action - get phase number FIRST
         val database = FirebaseDatabase.getInstance()
-        val currentPhaseNumber = getCurrentPhaseNumber()
-        Log.d("NightPhaseFragment", "Checking existing actions for phase $currentPhaseNumber")
+        val gameRef = database.getReference("games").child(gameId)
 
-        val actionsRef = database.getReference("games")
-            .child(gameId)
-            .child("actions")
-            .child("night")
-            .child(currentPhaseNumber.toString())
-            .child(playerId)
+        // First get the current phase number, THEN check for actions
+        gameRef.child("currentPhase").get().addOnSuccessListener { phaseSnapshot ->
+            val currentPhaseNumber = phaseSnapshot.getValue(Long::class.java)?.toInt() ?: 1
+            Log.d("NightPhaseFragment", "Checking existing actions for phase $currentPhaseNumber")
 
-        actionsRef.get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                // Player has already performed an action
-                hasPerformedAction = true
-                binding.buttonPerformAction.isEnabled = false
-                binding.buttonPerformAction.text = "Action Submitted"
-                binding.textViewActionStatus.text = "You have already performed your night action."
-                binding.textViewActionStatus.visibility = View.VISIBLE
+            val actionsRef = gameRef
+                .child("actions")
+                .child("night")
+                .child(currentPhaseNumber.toString())
+                .child(playerId)
 
-                // Log that the action was already performed
-                Log.d("NightPhaseFragment", "Player $playerId has already performed a $actionType action")
-            } else {
-                // Reset in case the button was disabled previously
-                hasPerformedAction = false
-                binding.buttonPerformAction.isEnabled = true
-                binding.textViewActionStatus.visibility = View.GONE
+            actionsRef.get().addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    // Player has already performed an action
+                    hasPerformedAction = true
+                    binding.buttonPerformAction.isEnabled = false
+                    binding.buttonPerformAction.text = "Action Submitted"
+                    binding.textViewActionStatus.text = "You have already performed your night action."
+                    binding.textViewActionStatus.visibility = View.VISIBLE
 
-                Log.d("NightPhaseFragment", "Player $playerId has not yet performed a $actionType action")
+                    // Log that the action was already performed
+                    Log.d("NightPhaseFragment", "Player $playerId has already performed a $actionType action")
+                } else {
+                    // Reset in case the button was disabled previously
+                    hasPerformedAction = false
+                    binding.buttonPerformAction.isEnabled = true
+                    binding.textViewActionStatus.visibility = View.GONE
+
+                    Log.d("NightPhaseFragment", "Player $playerId has not yet performed a $actionType action")
+                }
+            }.addOnFailureListener { exception ->
+                Log.e("NightPhaseFragment", "Failed to check existing action: ${exception.message}")
             }
         }.addOnFailureListener { exception ->
-            Log.e("NightPhaseFragment", "Failed to check existing action: ${exception.message}")
+            Log.e("NightPhaseFragment", "Failed to get current phase number: ${exception.message}")
         }
     }
 
