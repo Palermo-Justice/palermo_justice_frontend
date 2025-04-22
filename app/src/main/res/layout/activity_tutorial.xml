@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="16dp"
+    android:paddingTop="?attr/actionBarSize"
+    android:fitsSystemWindows="true">
+
+    <!-- Tutorial tex -->
+<androidx.cardview.widget.CardView
+android:id="@+id/cardTutorial"
+android:layout_width="0dp"
+android:layout_height="wrap_content"
+android:layout_marginTop="16dp"
+android:layout_marginBottom="16dp"
+app:cardCornerRadius="12dp"
+app:cardElevation="6dp"
+app:cardUseCompatPadding="true"
+app:cardBackgroundColor="@color/white_translucent"
+app:layout_constraintTop_toTopOf="parent"
+app:layout_constraintStart_toStartOf="parent"
+app:layout_constraintEnd_toEndOf="parent">
+
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/textTutorial"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        android:lineSpacingExtra="4dp"
+        android:text=
+        "
+Palermo Justice — Quick Guide\n
+\n
+\u2022 OBJECTIVE\n
+  – Citizens must eliminate all Mafia.\n
+  – Mafia win once they equal / outnumber citizens.\n
+\n
+\u2022 ROLES\n
+  — Paesano – a regular citizen with no powers.\n
+  — Picciotto Mafioso – Mafia; picks a victim each night.\n
+  — Ispettore – detective; checks one player per night.\n
+  — Sgarrista – protector; shields one player per night.\n
+  — Il Prete – priest; may revive one eliminated player (once).\n
+  — Pentito – when killed, drags one other player with them.\n
+  — Truffatore – swaps the roles of two other players.\n
+\n
+\u2022 DAY PHASE\n
+  1 Discuss and accuse.\n
+  2 Vote; the top‑voted player is eliminated.\n
+\n
+\u2022 NIGHT PHASE\n
+  – Mafia pick a target.\n
+  – Ispettore investigates.\n
+  – Sgarrista protects.\n
+  – Il Prete / Pentito / Truffatore act when relevant.\n
+\n
+\u2022 VICTORY\n
+  Citizens: all Mafia dead.\n
+  Mafia: 50 % or more of the survivors.
+"
+        />
+</ScrollView>
+</androidx.cardview.widget.CardView>
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
