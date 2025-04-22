@@ -13,7 +13,7 @@ Palermo Justice is a mobile app similar to "Mafia" or "Werewolf," where players 
 
 ## Project Structure
 
-The project follows a Model-View-Controller (MVC) architecture:
+The project mainly follows a Model-View-Controller (MVC) architecture:
 
 ### Model (com.example.palermojustice.model)
 - `Game.kt`: Represents the game state and data
@@ -85,12 +85,12 @@ The project follows a Model-View-Controller (MVC) architecture:
    ```json
    {
      "rules": {
-       ".read": true,
-       ".write": true
+      ".read": "now < 1747000800000",  // 2025-5-12
+      ".write": "now < 1747000800000",  // 2025-5-12
      }
    }
    ```
-   Note: For production, use more restrictive rules.
+   Note: For production, use more restrictive rules. Firebase only allows access for a certain period of time.
 
 ### Building the Project
 1. Clone the repository
@@ -102,15 +102,3 @@ The project follows a Model-View-Controller (MVC) architecture:
 1. Connect an Android device or use an emulator
 2. Run the app using `Run > Run 'app'`
 3. The app should install and launch automatically
-
-## Debugging
-- Use LogCat in Android Studio to view debug logs
-- The app uses extensive logging with tags like "GameController", "PhaseController", etc.
-- Firebase issues can be debugged through the Firebase Console
-
-## Contributing
-Contributions to the project are welcome. Please follow these steps:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
